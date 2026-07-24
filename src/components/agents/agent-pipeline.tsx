@@ -231,6 +231,7 @@ If the post passes audits, write a validation summary approving the post.`,
     setHasFailedOnce(false);
     setLoopFeedback(null);
     abortRef.current = null;
+    hasNavigatedRef.current = false;
   }, []);
 
   useEffect(() => {
