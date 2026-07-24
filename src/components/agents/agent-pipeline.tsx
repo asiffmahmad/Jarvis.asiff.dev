@@ -106,8 +106,8 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
   const [steps, setSteps] = useState<PipelineStep[]>([
     {
       id: "prompt_agent",
-      name: "Prompt Agent",
-      description: "Refines topic and establishes generation parameters",
+      name: "Strategic Context Planner",
+      description: "Optimizes input constraints, targeting vectors, and query parameters",
       status: "pending",
       result: "",
       systemPrompt: `You are an AI Prompt Optimization Expert. Analyze the user's input topic, expand it with targeted contexts, search terms, and establish platform-specific content parameters. Return the output as optimized guidelines.`,
@@ -115,8 +115,8 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
     },
     {
       id: "research_agent",
-      name: "Research Agent",
-      description: "Gathers context, statistics, and industry insights",
+      name: "Deep Web Intelligence Agent",
+      description: "Crawls database resources, articles, and crawls facts",
       status: "pending",
       result: "",
       systemPrompt: `You are a Research Analyst. Thoroughly analyze the optimized prompt guidelines and produce:
@@ -128,8 +128,8 @@ Format cleanly with Markdown headers.`,
     },
     {
       id: "research_validation",
-      name: "Research Validation Agent",
-      description: "Cross-checks facts, claims, and relevance",
+      name: "Fact Auditor & Validation Agent",
+      description: "Sanity checks claims, filters hallucinations, and audits facts",
       status: "pending",
       result: "",
       systemPrompt: `You are a Data Validation Expert. Review the provided research output. Identify any potential logical inconsistencies, missing sources, or lack of clarity. Summarize validated findings.`,
@@ -137,8 +137,8 @@ Format cleanly with Markdown headers.`,
     },
     {
       id: "content_creation",
-      name: "Content Creation Agent",
-      description: "Drafts the initial social media post",
+      name: "Creative Copywriter Agent",
+      description: "Transforms research insights into engaging structured narrative drafts",
       status: "pending",
       result: "",
       systemPrompt: `You are a Content Creator. Review the validated research and draft a social media post.
@@ -148,8 +148,8 @@ Return the output as a draft post.`,
     },
     {
       id: "content_polish",
-      name: "Content Polish Agent",
-      description: "Formats post layout, adds tone constraints & hashtags",
+      name: "SEO & Layout Optimizer Agent",
+      description: "Formats post spacing, metadata structures, and injects hashtags",
       status: "pending",
       result: "",
       systemPrompt: `You are a Content Polisher. Review the content draft and format it for social media.
@@ -167,8 +167,8 @@ Format the final output strictly as JSON with this structure (do not include cod
     },
     {
       id: "jarvis_agent",
-      name: "Jarvis Agent (Final Validator)",
-      description: "Performs safety checks, quality audits & final approval",
+      name: "JARVIS Master Quality Controller",
+      description: "Performs strict tone compliance, CTA validation, and grants approval",
       status: "pending",
       result: "",
       systemPrompt: `You are JARVIS, the master content supervisor. Audit the polished post details.

@@ -22,9 +22,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const providerStr = "groq"; 
-    const provider = AIProviderFactory.getProvider(providerStr);
-    const aiModel = provider.getModel();
+    const aiModel = AIProviderFactory.getModel("balanced");
 
     const systemPromptWrapper = `[JARVIS AGENT FRAMEWORK]
 You are a highly capable AI agent operating within the JARVIS framework.
