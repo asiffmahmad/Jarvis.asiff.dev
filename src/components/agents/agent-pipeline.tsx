@@ -22,6 +22,9 @@ interface PipelineStep {
   operation: string;
   color: string;
   icon: any;
+  // Node coordinates inside 500x300 graph space
+  x: number;
+  y: number;
 }
 
 interface ParsedPost {
@@ -124,19 +127,21 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
   const [steps, setSteps] = useState<PipelineStep[]>([
     {
       id: "prompt_agent",
-      name: "Strategic Context Planner",
-      description: "Optimizes input constraints and parameters",
+      name: "Strategic Planner",
+      description: "Optimizes input constraints",
       status: "pending",
       result: "",
       systemPrompt: `You are an AI Prompt Optimization Expert. Analyze the user's input topic, expand it with targeted contexts, search terms, and establish platform-specific content parameters. Return the output as optimized guidelines.`,
-      operation: "Optimizing targeting vectors...",
+      operation: "Optimizing vectors...",
       color: "#34F5D0", // Cyan
       icon: Cpu,
+      x: 70,
+      y: 150,
     },
     {
       id: "research_agent",
-      name: "Deep Web Intelligence Agent",
-      description: "Gathers statistics and industry insights",
+      name: "Web Intelligence",
+      description: "Gathers statistics and trends",
       status: "pending",
       result: "",
       systemPrompt: `You are a Research Analyst. Thoroughly analyze the optimized prompt guidelines and produce:
@@ -144,38 +149,44 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
 2. 3-4 key analytical findings and statistics.
 3. Industry insights.
 Format cleanly with Markdown headers.`,
-      operation: "Harvesting web statistics...",
-      color: "#A061FF", // Violet/Purple
+      operation: "Harvesting web data...",
+      color: "#A061FF", // Purple
       icon: Search,
+      x: 210,
+      y: 50,
     },
     {
       id: "research_validation",
-      name: "Fact Auditor & Validation Agent",
-      description: "Cross-checks facts and audits stats",
+      name: "Fact Auditor",
+      description: "Sanity checks stats & claims",
       status: "pending",
       result: "",
       systemPrompt: `You are a Data Validation Expert. Review the provided research output. Identify any potential logical inconsistencies, missing sources, or lack of clarity. Summarize validated findings.`,
-      operation: "Sanity checking statistics...",
-      color: "#00E676", // Emerald Green
+      operation: "Auditing facts...",
+      color: "#00E676", // Emerald
       icon: ShieldCheck,
+      x: 350,
+      y: 50,
     },
     {
       id: "content_creation",
-      name: "Creative Copywriter Agent",
-      description: "Drafts structured narrative captions",
+      name: "Copywriter",
+      description: "Drafts layout captions",
       status: "pending",
       result: "",
       systemPrompt: `You are a Content Creator. Review the validated research and draft a social media post.
 If you receive feedback regarding a missing Call-To-Action (CTA) or insufficient details, you MUST fix it.
 Return the output as a draft post.`,
-      operation: "Drafting copywriting hooks...",
-      color: "#FF4081", // Neon Pink
+      operation: "Drafting layout...",
+      color: "#FF4081", // Pink
       icon: PenTool,
+      x: 480,
+      y: 150,
     },
     {
       id: "content_polish",
-      name: "SEO & Layout Optimizer Agent",
-      description: "Appends optimized hashtags & JSON structure",
+      name: "SEO Optimizer",
+      description: "Formulates JSON metadata & hashtags",
       status: "pending",
       result: "",
       systemPrompt: `You are a Content Polisher. Review the content draft and format it for social media.
@@ -189,22 +200,26 @@ Format the final output strictly as JSON with this structure (do not include cod
   "platform": "linkedin",
   "bestPostingTime": "Best posting time"
 }`,
-      operation: "Constructing SEO JSON metadata...",
-      color: "#FF9100", // Amber Orange
+      operation: "Generating JSON...",
+      color: "#FF9100", // Orange
       icon: Layout,
+      x: 350,
+      y: 250,
     },
     {
       id: "jarvis_agent",
-      name: "JARVIS Master Quality Controller",
-      description: "Performs strict audits and compliance checks",
+      name: "JARVIS Auditor",
+      description: "Performs strict audits and approval",
       status: "pending",
       result: "",
       systemPrompt: `You are JARVIS, the master content supervisor. Audit the polished post details.
 Evaluate the post for tone, structure, and presence of a Call-to-Action (CTA).
 If the post passes audits, write a validation summary approving the post.`,
-      operation: "JARVIS Final Compliance Audit...",
-      color: "#FF1744", // Crimson Red
+      operation: "JARVIS quality audit...",
+      color: "#FF1744", // Ruby Red
       icon: ShieldAlert,
+      x: 210,
+      y: 250,
     },
   ]);
 
@@ -302,7 +317,7 @@ If the post passes audits, write a validation summary approving the post.`,
     } catch (err) {
       if ((err as Error).message === "VALIDATION_FAILED") {
         setHasFailedOnce(true);
-        setLoopFeedback("Validation Failed: The generated content is missing a strong Call-To-Action (CTA). Returning to Creative Copywriter Agent for iteration.");
+        setLoopFeedback("Validation Failed: Content lacks a Call-To-Action (CTA). Rerouting back to Copywriter Agent.");
         
         setSteps(s => {
           const c = [...s];
@@ -358,7 +373,7 @@ If the post passes audits, write a validation summary approving the post.`,
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-jarvis-bg-deepest/20">
       
-      {/* Top Glassmorphic Prompt Form */}
+      {/* Top Glassmorphic Prompt Input */}
       <div className="p-6 border-b border-jarvis-panel/30 glass-strong bg-jarvis-panel/10 shrink-0 relative z-10">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-4">
           <div className="flex-1 w-full relative">
@@ -398,130 +413,159 @@ If the post passes audits, write a validation summary approving the post.`,
       {/* Main Workspace Split View */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         
-        {/* Left Side: SVG Flow Graph */}
-        <div className="flex-[3] p-6 overflow-y-auto flex flex-col justify-center items-center relative border-r border-jarvis-panel/30">
+        {/* Left Side: SVG Particle Network Graph */}
+        <div className="flex-[3] p-4 overflow-hidden flex flex-col justify-center items-center relative border-r border-jarvis-panel/30 min-w-0 select-none">
           
-          {/* Animated Glow Grid Background */}
-          <div className="absolute inset-0 bg-[radial-gradient(#ffffff04_1px,transparent_1px)] [background-size:20px_20px] opacity-60 pointer-events-none" />
+          {/* Grid Background */}
+          <div className="absolute inset-0 bg-[radial-gradient(#ffffff03_1px,transparent_1px)] [background-size:24px_24px] opacity-60 pointer-events-none" />
 
-          <div className="w-full max-w-2xl relative space-y-6">
+          {/* SVG Canvas Workspace */}
+          <div className="w-full max-w-[580px] h-[360px] relative shrink-0">
             
-            {/* SVG Connecting Flow Lines */}
-            <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-              <svg className="w-full h-full min-h-[480px]" xmlns="http://www.w3.org/2000/svg">
-                {/* Arrow Paths Between Circular Nodes */}
-                {steps.map((_, idx) => {
-                  if (idx >= steps.length - 1) return null;
-                  const yStart = 45 + idx * 76;
-                  const yEnd = 45 + (idx + 1) * 76;
-                  const isFlowActive = currentStepIndex === idx && isRunning;
-                  return (
-                    <g key={`flow-${idx}`}>
-                      <line
-                        x1="50%"
-                        y1={yStart}
-                        x2="50%"
-                        y2={yEnd}
-                        stroke={isFlowActive ? "#34F5D0" : "rgba(255, 255, 255, 0.08)"}
-                        strokeWidth={isFlowActive ? "2" : "1.5"}
-                        strokeDasharray={isFlowActive ? "4,4" : "0"}
-                        className={cn(isFlowActive && "animate-[dash_10s_linear_infinite]")}
-                      />
-                    </g>
-                  );
-                })}
+            {/* Connection Lines & Flowing Communication Particles */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 550 300">
+              
+              {/* Glow filter definition */}
+              <defs>
+                <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="6" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
 
-                {/* Backtracking loop path when validation fails */}
-                {hasFailedOnce && (
-                  <path
-                    d="M 50% 425 C 20% 425, 20% 273, 50% 273"
-                    fill="none"
-                    stroke="#FF1744"
-                    strokeWidth="2"
-                    strokeDasharray="4,4"
-                    className={cn(isRunning && currentStepIndex === 3 && "animate-[dash_10s_linear_infinite]")}
-                    opacity="0.75"
-                  />
-                )}
-              </svg>
-            </div>
-
-            {/* Steps Nodes */}
-            <div className="relative z-10 space-y-6">
+              {/* Render Connection Lines */}
               {steps.map((step, idx) => {
-                const Icon = step.icon;
+                if (idx >= steps.length - 1) return null;
+                const nextStep = steps[idx + 1];
+                const isLineActive = currentStepIndex === idx && isRunning;
+                const strokeColor = isLineActive ? step.color : "rgba(255,255,255,0.06)";
                 
                 return (
-                  <motion.div
-                    key={step.id}
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className={cn(
-                      "flex items-center gap-4 p-3 rounded-2xl border transition-all duration-500 max-w-xl mx-auto glass-strong relative text-left",
-                      step.status === "running" && "bg-jarvis-panel/30 border-jarvis-primary shadow-[0_0_25px_rgba(52,245,208,0.15)]",
-                      step.status === "success" && "bg-[#34F5D0]/5 border-[#34F5D0]/30",
-                      step.status === "failed_validation" && "bg-red-500/5 border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.1)]",
-                      step.status === "pending" && "opacity-40 border-jarvis-panel-border bg-jarvis-panel/5"
+                  <g key={`path-${idx}`}>
+                    {/* Underlying Glow Line */}
+                    {isLineActive && (
+                      <line
+                        x1={step.x}
+                        y1={step.y}
+                        x2={nextStep.x}
+                        y2={nextStep.y}
+                        stroke={step.color}
+                        strokeWidth="4"
+                        opacity="0.3"
+                        filter="url(#neon-glow)"
+                      />
                     )}
-                  >
-                    {/* Circle Node Icon */}
-                    <div 
-                      className={cn(
-                        "w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-500 shrink-0",
-                        step.status === "running" && "animate-pulse"
-                      )}
-                      style={{
-                        borderColor: step.status !== "pending" ? step.color : "rgba(255,255,255,0.1)",
-                        backgroundColor: step.status !== "pending" ? `${step.color}15` : "rgba(255,255,255,0.03)",
-                        boxShadow: step.status === "running" ? `0 0 15px ${step.color}40` : "none"
-                      }}
-                    >
-                      {step.status === "running" ? (
-                        <Loader2 className="size-5 animate-spin" style={{ color: step.color }} />
-                      ) : step.status === "success" ? (
-                        <CheckCircle2 className="size-5 text-[#34F5D0]" />
-                      ) : step.status === "failed_validation" ? (
-                        <RefreshCw className="size-5 text-red-400 animate-spin" />
-                      ) : (
-                        <Icon className="size-5 text-jarvis-text-muted/80" style={{ color: step.status !== "pending" ? step.color : "" }} />
-                      )}
-                    </div>
+                    {/* Core Line */}
+                    <line
+                      x1={step.x}
+                      y1={step.y}
+                      x2={nextStep.x}
+                      y2={nextStep.y}
+                      stroke={strokeColor}
+                      strokeWidth={isLineActive ? "2" : "1"}
+                      strokeDasharray={isLineActive ? "4,4" : "0"}
+                      className={cn(isLineActive && "animate-[dash_8s_linear_infinite]")}
+                    />
 
-                    {/* Node Metadata */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-xs font-bold text-jarvis-text uppercase tracking-wider">{step.name}</span>
-                        {step.status === "running" && (
-                          <span className="text-[8px] bg-jarvis-primary/10 text-jarvis-primary border border-jarvis-primary/20 px-2 py-0.5 rounded-full font-mono font-bold animate-pulse">
-                            {step.operation}
-                          </span>
-                        )}
-                        {step.status === "failed_validation" && (
-                          <span className="text-[8px] bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full font-mono font-bold">
-                            Audit Rejected
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-jarvis-text-muted mt-0.5 leading-tight">{step.description}</p>
-                    </div>
-
-                    {/* Line Connection Dot indicator */}
-                    {step.status === "running" && (
-                      <span className="flex h-2 w-2 relative">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: step.color }} />
-                        <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: step.color }} />
-                      </span>
+                    {/* Flowing Data Particle (glowing dot travelling along path) */}
+                    {isLineActive && (
+                      <motion.circle
+                        r="4"
+                        fill={step.color}
+                        filter="url(#neon-glow)"
+                        initial={{ cx: step.x, cy: step.y }}
+                        animate={{ cx: nextStep.x, cy: nextStep.y }}
+                        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                      />
                     )}
-                  </motion.div>
+                  </g>
                 );
               })}
-            </div>
+
+              {/* Reroute failure line curved path (JARVIS back to Copywriter) */}
+              {hasFailedOnce && (
+                <g>
+                  {/* Curved Loop Line */}
+                  <path
+                    d={`M ${steps[5].x} ${steps[5].y} C ${ (steps[5].x + steps[3].x) / 2 } ${ steps[5].y + 60 }, ${ (steps[5].x + steps[3].x) / 2 } ${ steps[3].y + 60 }, ${steps[3].x} ${steps[3].y}`}
+                    fill="none"
+                    stroke={isRunning && currentStepIndex === 3 ? "#FF1744" : "rgba(255,23,68,0.15)"}
+                    strokeWidth={isRunning && currentStepIndex === 3 ? "2" : "1"}
+                    strokeDasharray="4,4"
+                  />
+                  {/* Glowing Flowing Failure Dot packets */}
+                  {isRunning && currentStepIndex === 3 && (
+                    <motion.circle
+                      r="4.5"
+                      fill="#FF1744"
+                      filter="url(#neon-glow)"
+                      animate={{
+                        cx: [steps[5].x, (steps[5].x + steps[3].x) / 2, steps[3].x],
+                        cy: [steps[5].y, steps[5].y + 60, steps[3].y]
+                      }}
+                      transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                    />
+                  )}
+                </g>
+              )}
+            </svg>
+
+            {/* Render Nodes Absolutely atop the SVG coords */}
+            {steps.map((step, idx) => {
+              const Icon = step.icon;
+              const isActive = currentStepIndex === idx && isRunning;
+              
+              return (
+                <div
+                  key={step.id}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-10"
+                  style={{ left: step.x, top: step.y }}
+                >
+                  <motion.div
+                    whileHover={{ scale: 1.15 }}
+                    className={cn(
+                      "w-12 h-12 rounded-full flex items-center justify-center border transition-all duration-500 bg-jarvis-panel/80 glass-strong relative",
+                      step.status === "running" && "animate-pulse"
+                    )}
+                    style={{
+                      borderColor: step.status !== "pending" ? step.color : "rgba(255,255,255,0.1)",
+                      boxShadow: isActive ? `0 0 20px ${step.color}60` : "none"
+                    }}
+                  >
+                    {/* Ring Pulse for Active Node */}
+                    {isActive && (
+                      <span className="absolute inset-0 rounded-full animate-ping opacity-25 border-2" style={{ borderColor: step.color }} />
+                    )}
+
+                    {step.status === "running" ? (
+                      <Loader2 className="size-5 animate-spin" style={{ color: step.color }} />
+                    ) : step.status === "success" ? (
+                      <CheckCircle2 className="size-5 text-[#34F5D0]" style={{ filter: "drop-shadow(0 0 4px #34F5D050)" }} />
+                    ) : step.status === "failed_validation" ? (
+                      <RefreshCw className="size-5 text-red-400 animate-spin" />
+                    ) : (
+                      <Icon className="size-5 text-jarvis-text-muted/70" style={{ color: step.status !== "pending" ? step.color : "" }} />
+                    )}
+                  </motion.div>
+
+                  {/* Absolute Node Labels */}
+                  <span 
+                    className="text-[9px] font-bold uppercase font-mono tracking-widest mt-1.5 px-2 py-0.5 rounded-md bg-jarvis-bg/90 border border-jarvis-panel-border/40"
+                    style={{ color: step.status !== "pending" ? step.color : "rgba(255,255,255,0.4)" }}
+                  >
+                    {step.name}
+                  </span>
+                </div>
+              );
+            })}
 
           </div>
 
           {!isRunning && currentStepIndex < 0 && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-jarvis-bg-deepest/40 backdrop-blur-[2px] z-20">
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-jarvis-bg-deepest/50 backdrop-blur-[2px] z-20">
               <div className="glass-strong border border-jarvis-panel-border/60 rounded-3xl p-8 max-w-sm text-center shadow-2xl relative overflow-hidden">
                 <div className="absolute -top-12 -left-12 w-24 h-24 bg-jarvis-primary/5 rounded-full blur-2xl" />
                 <Activity className="size-10 text-jarvis-primary/60 mx-auto mb-4 animate-pulse" />
@@ -563,7 +607,7 @@ If the post passes audits, write a validation summary approving the post.`,
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0 }}
-                  className="p-3 rounded-lg border border-red-500/20 bg-red-500/5 text-red-400 text-[11px] space-y-1"
+                  className="p-3 rounded-lg border border-red-500/20 bg-red-500/5 text-red-400 text-[11px] space-y-1 animate-pulse"
                 >
                   <div className="flex items-center gap-1.5 font-bold uppercase text-xs">
                     <RefreshCw className="size-3.5 animate-spin" />
@@ -578,12 +622,12 @@ If the post passes audits, write a validation summary approving the post.`,
             {activeStep && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 border-b border-jarvis-panel-border/20 pb-1.5 text-jarvis-text-muted uppercase tracking-widest text-[9px] font-bold">
-                  <span>Active Node Log: {activeStep.name}</span>
+                  <span style={{ color: activeStep.color }}>Active Agent: {activeStep.name}</span>
                 </div>
-                <div className="p-3 bg-jarvis-panel/20 border border-jarvis-panel-border/40 rounded-xl max-h-[220px] overflow-y-auto">
+                <div className="p-3 bg-jarvis-panel/20 border border-jarvis-panel-border/40 rounded-xl max-h-[220px] overflow-y-auto shadow-inner">
                   <pre className="text-[11px] whitespace-pre-wrap leading-relaxed text-jarvis-text/90">
-                    {activeStep.result || "> Initializing session channel..."}
-                    {activeStep.status === "running" && <span className="inline-block w-1.5 h-3 bg-jarvis-primary ml-0.5 animate-pulse" />}
+                    {activeStep.result || `> Launching execution channel for ${activeStep.name}...`}
+                    {activeStep.status === "running" && <span className="inline-block w-1.5 h-3 ml-0.5 animate-pulse" style={{ backgroundColor: activeStep.color }} />}
                   </pre>
                 </div>
               </div>
@@ -594,8 +638,8 @@ If the post passes audits, write a validation summary approving the post.`,
               {steps.filter(s => s.status === "success" || s.status === "failed_validation").map(s => (
                 <div key={`log-${s.id}`} className="border border-jarvis-panel-border/30 rounded-xl overflow-hidden text-[11px]">
                   <div className="px-3 py-1.5 bg-jarvis-panel/20 border-b border-jarvis-panel-border/20 flex justify-between items-center text-jarvis-text-muted">
-                    <span className="font-bold uppercase tracking-wider">{s.name} Output</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-jarvis-panel/40">COMPLETED</span>
+                    <span className="font-bold uppercase tracking-wider" style={{ color: s.color }}>{s.name} Log</span>
+                    <span className="text-[8px] px-1.5 py-0.5 rounded bg-jarvis-panel/40 font-bold uppercase tracking-wider">DONE</span>
                   </div>
                   <div className="p-3 bg-jarvis-bg/40 max-h-[140px] overflow-y-auto">
                     <pre className="whitespace-pre-wrap leading-relaxed text-jarvis-text/75">{s.result}</pre>
@@ -609,7 +653,7 @@ If the post passes audits, write a validation summary approving the post.`,
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="border border-[#34F5D0]/30 rounded-xl overflow-hidden"
+                className="border border-[#34F5D0]/30 rounded-xl overflow-hidden shadow-[0_0_20px_rgba(52,245,208,0.05)]"
               >
                 <div className="px-4 py-2 bg-[#34F5D0]/10 border-b border-[#34F5D0]/30 flex justify-between items-center text-[#34F5D0]">
                   <span className="font-bold uppercase tracking-wider flex items-center gap-1.5">
