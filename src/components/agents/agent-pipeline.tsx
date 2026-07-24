@@ -65,29 +65,39 @@ async function streamAgent(
     }),
   });
 
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-  const reader = res.body?.getReader();
-  const decoder = new TextDecoder();
-  let full = "";
-
-  if (reader) {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const chunk = decoder.decode(value, { stream: true });
-      for (const line of chunk.split("\n")) {
-        if (line.startsWith("0:")) {
-          try {
-            const text = safeJsonParse(line.slice(2));
-            full += text;
-            onChunk(full);
-          } catch {}
-        }
-      }
-    }
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `HTTP ${res.status}`);
   }
-  return full;
+
+  const data = await res.json();
+  const fullText = data.text || "";
+
+  const chunkSize = Math.max(8, Math.floor(fullText.length / 50));
+  let currentLength = 0;
+
+  return new Promise<string>((resolve, reject) => {
+    if (signal?.aborted) {
+      return reject(new DOMException("Aborted", "AbortError"));
+    }
+
+    const interval = setInterval(() => {
+      if (signal?.aborted) {
+        clearInterval(interval);
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+
+      currentLength += chunkSize;
+      if (currentLength >= fullText.length) {
+        clearInterval(interval);
+        onChunk(fullText);
+        resolve(fullText);
+      } else {
+        onChunk(fullText.slice(0, currentLength));
+      }
+    }, 30);
+  });
 }
 
 export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?: string; initialContext?: string }) {
