@@ -525,14 +525,14 @@ If the post passes audits, write a validation summary approving the post.`,
                   style={{ left: step.x, top: step.y }}
                 >
                   <motion.div
-                    whileHover={{ scale: 1.15 }}
+                    whileHover={{ scale: 1.1 }}
                     className={cn(
-                      "w-12 h-12 rounded-full flex items-center justify-center border transition-all duration-500 bg-jarvis-panel/80 glass-strong relative",
+                      "w-20 h-20 rounded-full flex items-center justify-center border-2 transition-all duration-500 bg-jarvis-panel/90 glass-strong relative",
                       step.status === "running" && "animate-pulse"
                     )}
                     style={{
                       borderColor: step.status !== "pending" ? step.color : "rgba(255,255,255,0.1)",
-                      boxShadow: isActive ? `0 0 20px ${step.color}60` : "none"
+                      boxShadow: isActive ? `0 0 25px ${step.color}60` : "none"
                     }}
                   >
                     {/* Ring Pulse for Active Node */}
@@ -540,14 +540,25 @@ If the post passes audits, write a validation summary approving the post.`,
                       <span className="absolute inset-0 rounded-full animate-ping opacity-25 border-2" style={{ borderColor: step.color }} />
                     )}
 
-                    {step.status === "running" ? (
-                      <Loader2 className="size-5 animate-spin" style={{ color: step.color }} />
-                    ) : step.status === "success" ? (
-                      <CheckCircle2 className="size-5 text-[#34F5D0]" style={{ filter: "drop-shadow(0 0 4px #34F5D050)" }} />
-                    ) : step.status === "failed_validation" ? (
-                      <RefreshCw className="size-5 text-red-400 animate-spin" />
-                    ) : (
-                      <Icon className="size-5 text-jarvis-text-muted/70" style={{ color: step.status !== "pending" ? step.color : "" }} />
+                    {/* Agent's Central Icon (always visible) */}
+                    <Icon className="size-8 transition-colors duration-500" style={{ color: step.status !== "pending" ? step.color : "rgba(255,255,255,0.3)" }} />
+
+                    {/* Status Badge overlay (bottom-right) */}
+                    {step.status !== "pending" && (
+                      <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center border border-jarvis-panel bg-jarvis-bg shadow-md">
+                        {step.status === "running" && (
+                          <Loader2 className="size-3.5 animate-spin" style={{ color: step.color }} />
+                        )}
+                        {step.status === "success" && (
+                          <CheckCircle2 className="size-3.5 text-[#34F5D0]" />
+                        )}
+                        {step.status === "failed_validation" && (
+                          <RefreshCw className="size-3.5 text-red-400 animate-spin" />
+                        )}
+                        {step.status === "error" && (
+                          <AlertCircle className="size-3.5 text-red-500" />
+                        )}
+                      </div>
                     )}
                   </motion.div>
 
