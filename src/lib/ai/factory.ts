@@ -4,6 +4,7 @@ import { OpenRouterProvider } from "./openrouter";
 import { getModelForTask, recordModelFailure } from "./model-router";
 import type { TaskType } from "./model-router";
 import { serverEnv } from "../env";
+import { generateText as baseGenerateText } from "ai";
 
 export type SupportedProviders = "groq" | "openai" | "claude" | "gemini" | "openrouter";
 
@@ -37,5 +38,43 @@ export class AIProviderFactory {
 
   static reportFailure(providerId: string, model: string) {
     recordModelFailure(providerId, model);
+  }
+
+  static async generateText(options: {
+    task?: TaskType;
+    system?: string;
+    prompt: string;
+    temperature?: number;
+  }) {
+    let lastError: any = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const available = getAvailableProviders();
+      let entry;
+      try {
+        entry = getModelForTask(options.task || "balanced", available);
+      } catch (err) {
+        throw new Error("No AI model available. Please configure GROQ_API_KEY or OPENROUTER_API_KEY.");
+      }
+
+      try {
+        const provider = this.getProvider(entry.provider as SupportedProviders);
+        const model = provider.getModel({ model: entry.model });
+
+        const result = await baseGenerateText({
+          model,
+          messages: [
+            ...(options.system ? [{ role: "system" as const, content: options.system }] : []),
+            { role: "user" as const, content: options.prompt }
+          ],
+          temperature: options.temperature ?? 0.7,
+        });
+        return result;
+      } catch (err) {
+        console.warn(`[AI FACTORY] Attempt ${attempt + 1} failed for ${entry.provider}:${entry.model}:`, err);
+        this.reportFailure(entry.provider, entry.model);
+        lastError = err;
+      }
+    }
+    throw lastError || new Error("All model generation attempts failed.");
   }
 }
