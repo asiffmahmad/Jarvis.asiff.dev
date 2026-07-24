@@ -8,7 +8,7 @@ import {
   Terminal, Hash, Target, Copy, Check,
 } from "lucide-react";
 import { cn, safeJsonParse } from "@/lib/utils";
-import { getResearchContext, clearResearchContext, storeGeneratedPost } from "@/lib/cross-page-store";
+import { getResearchContext, clearResearchContext } from "@/lib/cross-page-store";
 
 interface PipelineStep {
   id: string;
@@ -240,24 +240,34 @@ Return raw JSON only - no markdown, no code fences.`,
   useEffect(() => {
     if (post && !isRunning && !hasNavigatedRef.current) {
       hasNavigatedRef.current = true;
-      const timer = setTimeout(() => {
-        storeGeneratedPost({
-          title: post.title,
-          caption: post.caption,
-          hashtags: post.hashtags,
-          mediaIdeas: post.mediaIdeas,
-          callToAction: post.callToAction,
-          platform: post.platform,
-          bestPostingTime: post.bestPostingTime,
-          topic: topic.trim(),
-          tone: "professional",
-          contentType: "post",
-        });
+      const timer = setTimeout(async () => {
+        try {
+          await fetch("/api/publish/draft", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              post: {
+                title: post.title,
+                caption: post.caption,
+                hashtags: post.hashtags,
+                mediaIdeas: post.mediaIdeas,
+                callToAction: post.callToAction,
+                platform: post.platform,
+                bestPostingTime: post.bestPostingTime,
+                topic: topic.trim(),
+                tone: "professional",
+                contentType: "post",
+              }
+            }),
+          });
+        } catch (err) {
+          console.error("Failed to save draft to MySQL:", err);
+        }
         router.push("/create");
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [post, isRunning, router]);
+  }, [post, isRunning, router, topic]);
 
   const handleStop = () => {
     if (abortRef.current) {

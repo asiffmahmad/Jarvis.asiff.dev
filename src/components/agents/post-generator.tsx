@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import type { Platform, ContentTone, ContentType } from "@/lib/publishing/types";
 import { cn } from "@/lib/utils";
-import { storePendingGeneration } from "@/lib/cross-page-store";
 
 const platforms: { id: Platform; label: string }[] = [
   { id: "linkedin", label: "LinkedIn" },
@@ -41,14 +40,24 @@ export function PostGenerator() {
   const [tone, setTone] = useState<ContentTone>("professional");
   const [contentType, setContentType] = useState<ContentType>("post");
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!topic.trim()) return;
-    storePendingGeneration({
-      topic: topic.trim(),
-      platform,
-      tone,
-      contentType,
-    });
+    try {
+      await fetch("/api/publish/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pendingGen: {
+            topic: topic.trim(),
+            platform,
+            tone,
+            contentType,
+          }
+        }),
+      });
+    } catch (err) {
+      console.error("Failed to save pending generation config to MySQL:", err);
+    }
     router.push("/create");
   };
 

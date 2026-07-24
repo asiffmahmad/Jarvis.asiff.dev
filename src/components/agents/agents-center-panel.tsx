@@ -11,7 +11,7 @@ import type { AgentsState } from "@/lib/agents/use-agents";
 import { cn, safeJsonParse } from "@/lib/utils";
 import { PostGenerator } from "./post-generator";
 import { AgentPipelineWithResearch } from "./agent-pipeline";
-import { getResearchContext, storeGeneratedPost } from "@/lib/cross-page-store";
+import { getResearchContext } from "@/lib/cross-page-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface CenterPanelProps {
@@ -97,19 +97,29 @@ export function AgentsCenterPanel({ state }: CenterPanelProps) {
   useEffect(() => {
     if (parsedPost && !isRunning && hasResult && !hasNavigatedRef.current) {
       hasNavigatedRef.current = true;
-      const timer = setTimeout(() => {
-        storeGeneratedPost({
-          title: parsedPost.title,
-          caption: parsedPost.caption,
-          hashtags: parsedPost.hashtags,
-          mediaIdeas: parsedPost.mediaIdeas,
-          callToAction: parsedPost.callToAction,
-          platform: parsedPost.platform,
-          bestPostingTime: parsedPost.bestPostingTime,
-          topic: parsedPost.title,
-          tone: "professional",
-          contentType: "post",
-        });
+      const timer = setTimeout(async () => {
+        try {
+          await fetch("/api/publish/draft", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              post: {
+                title: parsedPost.title,
+                caption: parsedPost.caption,
+                hashtags: parsedPost.hashtags,
+                mediaIdeas: parsedPost.mediaIdeas,
+                callToAction: parsedPost.callToAction,
+                platform: parsedPost.platform,
+                bestPostingTime: parsedPost.bestPostingTime,
+                topic: parsedPost.title,
+                tone: "professional",
+                contentType: "post",
+              }
+            }),
+          });
+        } catch (err) {
+          console.error("Failed to save draft to MySQL:", err);
+        }
         router.push("/create");
       }, 1500);
       return () => clearTimeout(timer);

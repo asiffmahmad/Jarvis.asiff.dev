@@ -210,26 +210,50 @@ export default function CreatePage() {
     return allAccounts.find(a => a.id === selectedAccountId) || null;
   }, [allAccounts, selectedAccountId, accountsForPlatform]);
 
-  useEffect(() => {
-    // Check for pending async generation first
-    const pending = getPendingGeneration();
-    if (pending) {
-      setPendingGen(pending);
-      clearPendingGeneration();
-      return;
+  const saveDraftToDb = async (draftData: PostData) => {
+    try {
+      await fetch("/api/publish/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ post: draftData }),
+      });
+    } catch (err) {
+      console.error("Failed to save draft to MySQL:", err);
     }
+  };
 
-    // Check for pre-stored finalized post (from Pipeline / Agent Execute)
-    const data = getGeneratedPost();
-    if (data) {
-      setPost(data);
-      setEditCaption(data.caption);
-      clearGeneratedPost();
-      const matching = allAccounts.filter(a => a.platformId === data.platform);
-      if (matching.length > 0) {
-        setSelectedAccountId(matching[0].id);
-      }
+  const deleteDraftFromDb = async () => {
+    try {
+      await fetch("/api/publish/draft", {
+        method: "DELETE",
+      });
+    } catch (err) {
+      console.error("Failed to delete draft from MySQL:", err);
     }
+  };
+
+  useEffect(() => {
+    // Fetch active draft or pending generation configuration from MySQL
+    (async () => {
+      try {
+        const res = await fetch("/api/publish/draft");
+        if (res.ok) {
+          const result = await res.json();
+          if (result.pendingGen) {
+            setPendingGen(result.pendingGen);
+          } else if (result.draft) {
+            setPost(result.draft);
+            setEditCaption(result.draft.caption);
+            const matching = allAccounts.filter(a => a.platformId === result.draft.platform);
+            if (matching.length > 0) {
+              setSelectedAccountId(matching[0].id);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch draft from MySQL:", err);
+      }
+    })();
   }, [allAccounts]);
 
   // Kick off async generation when pendingGen is set
@@ -270,6 +294,7 @@ export default function CreatePage() {
         setEditCaption(postData.caption);
         setGenerating(false);
         setPendingGen(null);
+        await saveDraftToDb(postData);
 
         const matching = allAccounts.filter(a => a.platformId === postData.platform);
         if (matching.length > 0) {
@@ -292,7 +317,9 @@ export default function CreatePage() {
 
   const handlePlatformChange = (newPlatform: string) => {
     if (!post) return;
-    setPost({ ...post, platform: newPlatform });
+    const updated = { ...post, platform: newPlatform };
+    setPost(updated);
+    saveDraftToDb(updated);
     const matching = allAccounts.filter(a => a.platformId === newPlatform);
     setSelectedAccountId(matching.length > 0 ? matching[0].id : null);
   };
@@ -313,6 +340,9 @@ export default function CreatePage() {
       });
       if (!res.ok) throw new Error();
       setStatusMsg("Posted! It will appear on your connected account shortly.");
+      clearGeneratedPost();
+      await deleteDraftFromDb();
+      setPost(null);
       setTimeout(() => router.push("/scheduler"), 2000);
     } catch {
       setStatusMsg("Post failed. Check your platform connection.");
@@ -336,6 +366,9 @@ export default function CreatePage() {
       if (!res.ok) throw new Error();
       setStatusMsg(`Scheduled for ${new Date(scheduleDate).toLocaleString()}`);
       setShowSchedule(false);
+      clearGeneratedPost();
+      await deleteDraftFromDb();
+      setPost(null);
       setTimeout(() => router.push("/scheduler"), 2000);
     } catch {
       setStatusMsg("Scheduling failed.");
@@ -395,6 +428,7 @@ export default function CreatePage() {
       };
       setPost(postData);
       setEditCaption(postData.caption);
+      await saveDraftToDb(postData);
       setGenerating(false);
       setFeedbackText("");
 
@@ -662,7 +696,12 @@ export default function CreatePage() {
                     <span className="text-[10px] font-mono text-jarvis-text-muted">{post.caption.length} chars</span>
                     {editing && (
                       <button
-                        onClick={() => { setPost({ ...post, caption: editCaption }); setEditing(false); }}
+                        onClick={() => {
+                          const updated = { ...post, caption: editCaption };
+                          setPost(updated);
+                          saveDraftToDb(updated);
+                          setEditing(false);
+                        }}
                         className="text-[10px] text-jarvis-primary hover:text-jarvis-primary/80 font-bold uppercase tracking-wider"
                       >
                         Update
@@ -740,7 +779,11 @@ export default function CreatePage() {
                   <Repeat className="size-4" /> Revise
                 </button>
                 <button
-                  onClick={() => router.push("/agents")}
+                  onClick={() => {
+                    clearGeneratedPost();
+                    setPost(null);
+                    router.push("/agents");
+                  }}
                   className="flex items-center gap-2 px-4 py-3 rounded-xl transition-all text-xs font-bold uppercase tracking-wider border border-jarvis-panel-border text-jarvis-text-muted hover:text-jarvis-text"
                 >
                   <X className="size-4" /> Reject

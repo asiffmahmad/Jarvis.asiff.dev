@@ -31,14 +31,14 @@ export interface PendingGeneration {
 
 export function storeResearchContext(data: ResearchContext) {
   if (typeof window !== "undefined") {
-    sessionStorage.setItem(RESEARCH_KEY, JSON.stringify(data));
+    localStorage.setItem(RESEARCH_KEY, JSON.stringify(data));
   }
 }
 
 export function getResearchContext(): ResearchContext | null {
   if (typeof window !== "undefined") {
     try {
-      const raw = sessionStorage.getItem(RESEARCH_KEY);
+      const raw = localStorage.getItem(RESEARCH_KEY);
       if (raw) return JSON.parse(raw);
     } catch {}
   }
@@ -47,7 +47,7 @@ export function getResearchContext(): ResearchContext | null {
 
 export function clearResearchContext() {
   if (typeof window !== "undefined") {
-    sessionStorage.removeItem(RESEARCH_KEY);
+    localStorage.removeItem(RESEARCH_KEY);
   }
 }
 
@@ -55,14 +55,14 @@ export function clearResearchContext() {
 
 export function storeGeneratedPost(data: PostData) {
   if (typeof window !== "undefined") {
-    sessionStorage.setItem(POST_KEY, JSON.stringify(data));
+    localStorage.setItem(POST_KEY, JSON.stringify(data));
   }
 }
 
 export function getGeneratedPost(): PostData | null {
   if (typeof window !== "undefined") {
     try {
-      const raw = sessionStorage.getItem(POST_KEY);
+      const raw = localStorage.getItem(POST_KEY);
       if (raw) return JSON.parse(raw);
     } catch {}
   }
@@ -71,7 +71,7 @@ export function getGeneratedPost(): PostData | null {
 
 export function clearGeneratedPost() {
   if (typeof window !== "undefined") {
-    sessionStorage.removeItem(POST_KEY);
+    localStorage.removeItem(POST_KEY);
   }
 }
 
@@ -79,14 +79,14 @@ export function clearGeneratedPost() {
 
 export function storePendingGeneration(data: PendingGeneration) {
   if (typeof window !== "undefined") {
-    sessionStorage.setItem(PENDING_GEN_KEY, JSON.stringify(data));
+    localStorage.setItem(PENDING_GEN_KEY, JSON.stringify(data));
   }
 }
 
 export function getPendingGeneration(): PendingGeneration | null {
   if (typeof window !== "undefined") {
     try {
-      const raw = sessionStorage.getItem(PENDING_GEN_KEY);
+      const raw = localStorage.getItem(PENDING_GEN_KEY);
       if (raw) return JSON.parse(raw);
     } catch {}
   }
@@ -95,6 +95,6 @@ export function getPendingGeneration(): PendingGeneration | null {
 
 export function clearPendingGeneration() {
   if (typeof window !== "undefined") {
-    sessionStorage.removeItem(PENDING_GEN_KEY);
+    localStorage.removeItem(PENDING_GEN_KEY);
   }
 }
