@@ -60,6 +60,9 @@ export class AIProviderFactory {
         const provider = this.getProvider(entry.provider as SupportedProviders);
         const model = provider.getModel({ model: entry.model });
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+
         const result = await baseGenerateText({
           model,
           messages: [
@@ -67,7 +70,10 @@ export class AIProviderFactory {
             { role: "user" as const, content: options.prompt }
           ],
           temperature: options.temperature ?? 0.7,
+          abortSignal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
         return result;
       } catch (err) {
         console.warn(`[AI FACTORY] Attempt ${attempt + 1} failed for ${entry.provider}:${entry.model}:`, err);
