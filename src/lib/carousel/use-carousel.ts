@@ -85,6 +85,39 @@ export function useCarousel(initialId?: string) {
     }));
   }, []);
 
+  const addImageElement = useCallback((slideId: string, url: string) => {
+    setCarousel((prev) => ({
+      ...prev,
+      slides: prev.slides.map((s) => {
+        if (s.id !== slideId) return s;
+        // Check if there's already an image element, if so, replace it. Otherwise append.
+        const hasImg = s.elements.some(el => el.type === "image");
+        const nextElements = hasImg 
+          ? s.elements.map(el => el.type === "image" ? { ...el, content: url } : el)
+          : [...s.elements, { id: crypto.randomUUID(), type: "image", content: url }];
+        return {
+          ...s,
+          elements: nextElements,
+        };
+      }),
+      updatedAt: new Date().toISOString(),
+    }));
+  }, []);
+
+  const removeElement = useCallback((slideId: string, elementId: string) => {
+    setCarousel((prev) => ({
+      ...prev,
+      slides: prev.slides.map((s) => {
+        if (s.id !== slideId) return s;
+        return {
+          ...s,
+          elements: s.elements.filter(el => el.id !== elementId),
+        };
+      }),
+      updatedAt: new Date().toISOString(),
+    }));
+  }, []);
+
   return {
     carousel,
     activeSlideId,
@@ -93,5 +126,7 @@ export function useCarousel(initialId?: string) {
     removeSlide,
     reorderSlides,
     updateSlideContent,
+    addImageElement,
+    removeElement,
   };
 }

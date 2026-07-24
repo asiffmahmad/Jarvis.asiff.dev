@@ -17,7 +17,10 @@ export default function CarouselBuilderPage() {
         <div className="absolute inset-0 z-0 pointer-events-none opacity-20 bg-[linear-gradient(rgba(52,245,208,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(52,245,208,0.1)_1px,transparent_1px)] bg-[size:40px_40px]" />
 
         <div className="flex-1 flex h-full relative z-10">
-          <CarouselSidebarLeft />
+          <CarouselSidebarLeft 
+            activeSlideId={carouselState.activeSlideId} 
+            addImageElement={carouselState.addImageElement}
+          />
           
           <CarouselWorkspace 
             carousel={carouselState.carousel} 
@@ -25,6 +28,7 @@ export default function CarouselBuilderPage() {
             setActiveSlideId={carouselState.setActiveSlideId}
             updateSlideContent={carouselState.updateSlideContent}
             reorderSlides={carouselState.reorderSlides}
+            removeElement={carouselState.removeElement}
           />
           
           <CarouselSidebarRight />

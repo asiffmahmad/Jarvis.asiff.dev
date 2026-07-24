@@ -9,6 +9,7 @@ interface Props {
   setActiveSlideId: (id: string) => void;
   updateSlideContent: (slideId: string, elementId: string, content: string) => void;
   reorderSlides: (oldIndex: number, newIndex: number) => void;
+  removeElement: (slideId: string, elementId: string) => void;
 }
 
 export function CarouselWorkspace({
@@ -17,6 +18,7 @@ export function CarouselWorkspace({
   setActiveSlideId,
   updateSlideContent,
   reorderSlides,
+  removeElement,
 }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -45,6 +47,7 @@ export function CarouselWorkspace({
                 isActive={activeSlideId === slide.id}
                 onSelect={() => setActiveSlideId(slide.id)}
                 updateContent={(elId, content) => updateSlideContent(slide.id, elId, content)}
+                removeElement={removeElement}
               />
             ))}
           </SortableContext>

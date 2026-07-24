@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { CarouselSlide } from "@/lib/carousel/types";
-import { GripVertical } from "lucide-react";
+import { GripVertical, X } from "lucide-react";
 
 interface Props {
   slide: CarouselSlide;
@@ -9,9 +9,10 @@ interface Props {
   isActive: boolean;
   onSelect: () => void;
   updateContent: (elementId: string, content: string) => void;
+  removeElement: (slideId: string, elementId: string) => void;
 }
 
-export function SlideEditor({ slide, index, isActive, onSelect, updateContent }: Props) {
+export function SlideEditor({ slide, index, isActive, onSelect, updateContent, removeElement }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: slide.id,
   });
@@ -48,8 +49,8 @@ export function SlideEditor({ slide, index, isActive, onSelect, updateContent }:
         <GripVertical className="size-5" />
       </div>
 
-      {/* Slide Content Editor MVP */}
-      <div className="flex-1 flex flex-col justify-center items-center text-center">
+      {/* Slide Content Editor */}
+      <div className="flex-1 flex flex-col justify-center items-center text-center relative overflow-hidden">
         {slide.elements.map((el) => {
           if (el.type === "title") {
             return (
@@ -57,9 +58,9 @@ export function SlideEditor({ slide, index, isActive, onSelect, updateContent }:
                 key={el.id}
                 value={el.content}
                 onChange={(e) => updateContent(el.id, e.target.value)}
-                className="w-full bg-transparent border-none outline-none resize-none text-center font-heading text-3xl font-bold text-jarvis-text placeholder-jarvis-text-muted/50 focus:ring-0 break-words"
+                className="w-full bg-transparent border-none outline-none resize-none text-center font-heading text-2xl font-bold text-jarvis-text placeholder-jarvis-text-muted/50 focus:ring-0 break-words"
                 placeholder="Slide Title"
-                rows={3}
+                rows={2}
               />
             );
           }
@@ -69,10 +70,23 @@ export function SlideEditor({ slide, index, isActive, onSelect, updateContent }:
                 key={el.id}
                 value={el.content}
                 onChange={(e) => updateContent(el.id, e.target.value)}
-                className="w-full mt-4 bg-transparent border-none outline-none resize-none text-center font-body text-base text-jarvis-text-muted placeholder-jarvis-text-muted/30 focus:ring-0"
+                className="w-full mt-2 bg-transparent border-none outline-none resize-none text-center font-body text-sm text-jarvis-text-muted placeholder-jarvis-text-muted/30 focus:ring-0"
                 placeholder="Write your text here..."
-                rows={5}
+                rows={3}
               />
+            );
+          }
+          if (el.type === "image") {
+            return (
+              <div key={el.id} className="relative mt-3 w-full aspect-video rounded-xl overflow-hidden border border-jarvis-panel-border group/img">
+                <img src={el.content} alt="Slide Image" className="w-full h-full object-cover" />
+                <button
+                  onClick={(e) => { e.stopPropagation(); removeElement(slide.id, el.id); }}
+                  className="absolute top-2 right-2 p-1 rounded-lg bg-black/70 hover:bg-black/90 text-white opacity-0 group-hover/img:opacity-100 transition-opacity"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
             );
           }
           return null;
