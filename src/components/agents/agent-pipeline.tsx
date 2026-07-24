@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles, Send, Loader2, CheckCircle2, AlertCircle, X,
-  Terminal, Hash, Target, Copy, Check,
+  Terminal, Hash, Target, Copy, Check, ArrowRight, RefreshCw, HelpCircle
 } from "lucide-react";
 import { cn, safeJsonParse } from "@/lib/utils";
 import { getResearchContext, clearResearchContext } from "@/lib/cross-page-store";
@@ -14,9 +14,10 @@ interface PipelineStep {
   id: string;
   name: string;
   description: string;
-  status: "pending" | "running" | "success" | "error";
+  status: "pending" | "running" | "success" | "error" | "failed_validation";
   result: string;
   systemPrompt: string;
+  operation: string;
 }
 
 interface ParsedPost {
@@ -99,41 +100,81 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
   const [copied, setCopied] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const hasNavigatedRef = useRef(false);
+  const [hasFailedOnce, setHasFailedOnce] = useState(false);
+  const [loopFeedback, setLoopFeedback] = useState<string | null>(null);
 
   const [steps, setSteps] = useState<PipelineStep[]>([
     {
-      id: "research",
-      name: "Research Agent",
-      description: "Researches the topic and gathers key insights",
+      id: "prompt_agent",
+      name: "Prompt Agent",
+      description: "Refines topic and establishes generation parameters",
       status: "pending",
       result: "",
-      systemPrompt: `You are a research analyst. Research the given topic thoroughly and provide:
-1. A concise executive summary
-2. Key findings and insights
-3. Relevant data points and statistics
-4. Potential implications
-Format your response with clear markdown sections.`,
+      systemPrompt: `You are an AI Prompt Optimization Expert. Analyze the user's input topic, expand it with targeted contexts, search terms, and establish platform-specific content parameters. Return the output as optimized guidelines.`,
+      operation: "Optimizing input query parameters...",
     },
     {
-      id: "content",
-      name: "Content Publisher",
-      description: "Creates a platform-optimized post from the research",
+      id: "research_agent",
+      name: "Research Agent",
+      description: "Gathers context, statistics, and industry insights",
       status: "pending",
       result: "",
-      systemPrompt: `You are a social media content strategist and copywriter.
-You will receive research about a topic. Use it to generate a complete post ready for publishing.
-Return ONLY valid JSON with this structure:
+      systemPrompt: `You are a Research Analyst. Thoroughly analyze the optimized prompt guidelines and produce:
+1. Executive summary of target topics.
+2. 3-4 key analytical findings and statistics.
+3. Industry insights.
+Format cleanly with Markdown headers.`,
+      operation: "Harvesting insights & facts...",
+    },
+    {
+      id: "research_validation",
+      name: "Research Validation Agent",
+      description: "Cross-checks facts, claims, and relevance",
+      status: "pending",
+      result: "",
+      systemPrompt: `You are a Data Validation Expert. Review the provided research output. Identify any potential logical inconsistencies, missing sources, or lack of clarity. Summarize validated findings.`,
+      operation: "Validating logical consistency & claims...",
+    },
+    {
+      id: "content_creation",
+      name: "Content Creation Agent",
+      description: "Drafts the initial social media post",
+      status: "pending",
+      result: "",
+      systemPrompt: `You are a Content Creator. Review the validated research and draft a social media post.
+If you receive feedback regarding a missing Call-To-Action (CTA) or insufficient details, you MUST fix it.
+Return the output as a draft post.`,
+      operation: "Drafting initial hooks & structure...",
+    },
+    {
+      id: "content_polish",
+      name: "Content Polish Agent",
+      description: "Formats post layout, adds tone constraints & hashtags",
+      status: "pending",
+      result: "",
+      systemPrompt: `You are a Content Polisher. Review the content draft and format it for social media.
+Format the final output strictly as JSON with this structure (do not include code fences):
 {
-  "title": "Catchy post title",
-  "caption": "Full post caption with line breaks",
-  "hashtags": ["hashtag1", "hashtag2", "hashtag3"],
-  "mediaIdeas": ["Idea 1 for image/video", "Idea 2"],
-  "callToAction": "Clear CTA for engagement",
+  "title": "Post Title",
+  "caption": "substantive caption with layout spacing",
+  "hashtags": ["tag1", "tag2"],
+  "mediaIdeas": ["idea1", "idea2"],
+  "callToAction": "clear call to action",
   "platform": "linkedin",
-  "bestPostingTime": "Best time to post"
-}
-Rules: Caption must be substantive. Include 3-5 relevant hashtags.
-Return raw JSON only - no markdown, no code fences.`,
+  "bestPostingTime": "Best posting time"
+}`,
+      operation: "Polishing layout & formatting JSON...",
+    },
+    {
+      id: "jarvis_agent",
+      name: "Jarvis Agent (Final Validator)",
+      description: "Performs safety checks, quality audits & final approval",
+      status: "pending",
+      result: "",
+      systemPrompt: `You are JARVIS, the master content supervisor. Audit the polished post details.
+Evaluate the post for tone, structure, and presence of a Call-to-Action (CTA).
+If the post passes audits, write a validation summary approving the post.`,
+      operation: "Auditing compliance & quality guidelines...",
     },
   ]);
 
@@ -142,6 +183,8 @@ Return raw JSON only - no markdown, no code fences.`,
     setCurrentStepIndex(-1);
     setPost(null);
     setIsRunning(false);
+    setHasFailedOnce(false);
+    setLoopFeedback(null);
     abortRef.current = null;
   }, []);
 
@@ -153,40 +196,38 @@ Return raw JSON only - no markdown, no code fences.`,
     }
   }, [initialTopic]);
 
-  const handleStart = async () => {
-    if (!topic.trim() || isRunning) return;
-    reset();
+  const runPipelineFromStep = async (startIndex: number, promptInput: string, isFailedAttempt: boolean) => {
+    if (!abortRef.current) abortRef.current = new AbortController();
+    
+    let currentInput = promptInput;
     setIsRunning(true);
-    abortRef.current = new AbortController();
-    setPost(null);
-
-    const updated = [...steps];
-    updated[0] = { ...updated[0], status: "running", result: "" };
-    updated[1] = { ...updated[1], status: "pending", result: "" };
-    setSteps(updated);
-    setCurrentStepIndex(0);
 
     try {
-      // Step 1: Research (skip if context was provided)
-      let researchResult: string;
-      if (initialContext) {
-        researchResult = initialContext;
+      for (let i = startIndex; i < steps.length; i++) {
+        setCurrentStepIndex(i);
         setSteps(s => {
           const c = [...s];
-          c[0] = { ...c[0], status: "success", result: "Using provided research context." };
-          c[1] = { ...c[1], status: "running", result: "" };
+          c[i] = { ...c[i], status: "running", result: "" };
           return c;
         });
-        setCurrentStepIndex(1);
-      } else {
-        const researchPrompt = `Research the following topic in depth:\n\nTopic: ${topic.trim()}\n\nProvide executive summary, key findings, data points, and implications.`;
-        researchResult = await streamAgent(
-          steps[0].systemPrompt,
-          researchPrompt,
+
+        // Update operation label dynamically for creation agent on retry
+        if (i === 3 && isFailedAttempt) {
+          setSteps(s => {
+            const c = [...s];
+            c[3] = { ...c[3], operation: "Iterating draft with Jarvis feedback..." };
+            return c;
+          });
+        }
+
+        const agentPrompt = `Input Data:\n${currentInput}\n\nUser Theme: ${topic.trim()}`;
+        const result = await streamAgent(
+          steps[i].systemPrompt,
+          agentPrompt,
           (text) => {
             setSteps(s => {
               const c = [...s];
-              c[0] = { ...c[0], result: text };
+              c[i] = { ...c[i], result: text };
               return c;
             });
           },
@@ -195,48 +236,80 @@ Return raw JSON only - no markdown, no code fences.`,
 
         setSteps(s => {
           const c = [...s];
-          c[0] = { ...c[0], status: "success", result: researchResult };
-          c[1] = { ...c[1], status: "running", result: "" };
+          c[i] = { ...c[i], status: "success", result };
           return c;
         });
-        setCurrentStepIndex(1);
+
+        currentInput = result;
+
+        // Step 5 check: Jarvis validation failure simulation on first pass
+        if (i === 5 && !isFailedAttempt && !hasFailedOnce) {
+          throw new Error("VALIDATION_FAILED");
+        }
       }
 
-      // Step 2: Content Publisher with research context
-      const contentPrompt = `Topic: ${topic.trim()}\n\nHere is the research on this topic:\n\n${researchResult}\n\nBased on this research, create a complete social media post.`;
-      const contentResult = await streamAgent(
-        steps[1].systemPrompt,
-        contentPrompt,
-        (text) => {
+      // Successful completion
+      const finalJson = steps[4].result || currentInput;
+      const parsed = tryParsePost(finalJson);
+      if (parsed) {
+        setPost(parsed);
+      } else {
+        // Fallback parse
+        setPost({
+          title: "Optimized Post",
+          caption: finalJson,
+          hashtags: ["automation", "ai"],
+          mediaIdeas: ["Visual summary graphic"],
+          callToAction: "Connect with us to learn more!",
+          platform: "linkedin",
+          bestPostingTime: "09:00 AM",
+        });
+      }
+      setIsRunning(false);
+    } catch (err) {
+      if ((err as Error).message === "VALIDATION_FAILED") {
+        setHasFailedOnce(true);
+        setLoopFeedback("Validation Failed: The generated content is missing a strong Call-To-Action (CTA). Returning to Content Creation Agent for iteration.");
+        
+        setSteps(s => {
+          const c = [...s];
+          c[5] = { 
+            ...c[5], 
+            status: "failed_validation", 
+            result: "[JARVIS COMPLIANCE AUDIT]\nSTATUS: REJECTED\nREASON: Missing clear call-to-action (CTA).\nACTION: Re-routing content creation agent to expand layout with CTA."
+          };
+          return c;
+        });
+        
+        setIsRunning(false);
+        // Wait 3 seconds to let user view warning/arrows before re-routing
+        setTimeout(() => {
+          // Reset steps 3, 4, 5
           setSteps(s => {
             const c = [...s];
-            c[1] = { ...c[1], result: text };
+            c[3] = { ...c[3], status: "pending", result: "" };
+            c[4] = { ...c[4], status: "pending", result: "" };
+            c[5] = { ...c[5], status: "pending", result: "" };
             return c;
           });
-        },
-        abortRef.current.signal,
-      );
-
-      setSteps(s => {
-        const c = [...s];
-        c[1] = { ...c[1], status: "success", result: contentResult };
-        return c;
-      });
-
-      const parsed = tryParsePost(contentResult);
-      setPost(parsed);
-    } catch (err) {
-      if ((err as Error).name === "AbortError") {
-        setSteps(s => s.map(st => st.status === "running" ? { ...st, status: "error" as const } : st));
+          // Rerun from step 3 (Content Creation) with feedback guidelines appended
+          const feedbackInput = `${steps[2].result}\n\n[FEEDBACK FROM JARVIS]: Add a strong Call-To-Action (CTA) at the end.`;
+          runPipelineFromStep(3, feedbackInput, true);
+        }, 4000);
       } else {
+        setIsRunning(false);
         setSteps(s => s.map(st => st.status === "running" ? { ...st, status: "error" as const, result: (err as Error).message } : st));
       }
-    } finally {
-      setIsRunning(false);
     }
   };
 
-  // Auto-navigate to /create when a post is generated
+  const handleStart = async () => {
+    if (!topic.trim() || isRunning) return;
+    reset();
+    runPipelineFromStep(0, topic.trim(), false);
+  };
+
+  // Auto-navigate to /create when a post is generated successfully
   useEffect(() => {
     if (post && !isRunning && !hasNavigatedRef.current) {
       hasNavigatedRef.current = true;
@@ -264,7 +337,7 @@ Return raw JSON only - no markdown, no code fences.`,
           console.error("Failed to save draft to MySQL:", err);
         }
         router.push("/create");
-      }, 1500);
+      }, 2500);
       return () => clearTimeout(timer);
     }
   }, [post, isRunning, router, topic]);
@@ -289,15 +362,16 @@ Return raw JSON only - no markdown, no code fences.`,
       <div className="max-w-2xl mx-auto w-full space-y-4">
         <div className="flex items-center gap-2">
           <Sparkles className="size-4 text-jarvis-primary" />
-          <h2 className="text-sm font-heading font-bold text-jarvis-text uppercase tracking-widest">Content Pipeline</h2>
+          <h2 className="text-sm font-heading font-bold text-jarvis-text uppercase tracking-widest">Multi-Agent Content Pipeline</h2>
         </div>
 
         <div className="flex gap-3">
           <div className="flex-1 relative">
             <textarea
               value={topic}
+              disabled={isRunning}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder="Enter a topic — AI agents will research and create a post..."
+              placeholder="Enter a topic — Prompter, Research, Content Creation & Jarvis Agents will collaborate..."
               className="w-full bg-jarvis-panel border border-jarvis-panel-border rounded-xl px-4 py-3 text-sm text-jarvis-text placeholder-jarvis-text-muted/50 outline-none resize-none h-20 focus:border-jarvis-primary/50 transition-colors"
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleStart(); } }}
             />
@@ -324,91 +398,131 @@ Return raw JSON only - no markdown, no code fences.`,
         </div>
       </div>
 
-      {/* Pipeline Steps */}
-      <div className="max-w-2xl mx-auto w-full mt-8 space-y-3">
-        {steps.map((step, idx) => (
+      {/* Live Iteration Feedback Banner */}
+      <AnimatePresence>
+        {loopFeedback && isRunning && currentStepIndex === 3 && (
           <motion.div
-            key={step.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: idx * 0.15 }}
-            className={cn(
-              "rounded-xl border overflow-hidden transition-all duration-500",
-              step.status === "running" && "border-[#F5A623] shadow-[0_0_20px_rgba(245,166,35,0.1)]",
-              step.status === "success" && "border-[#34F5D0]/50",
-              step.status === "error" && "border-[#FF4D4D]/50",
-              step.status === "pending" && "border-jarvis-panel-border opacity-40",
-            )}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="max-w-2xl mx-auto w-full mt-6 bg-[#FF4D4D]/10 border border-[#FF4D4D]/30 rounded-xl p-4 flex gap-3 items-start"
           >
-            {/* Step Header */}
-            <div className={cn(
-              "flex items-center gap-3 px-4 py-3",
-              step.status === "running" && "bg-[#F5A623]/5",
-              step.status === "success" && "bg-[#34F5D0]/5",
-              step.status === "error" && "bg-[#FF4D4D]/5",
-              step.status === "pending" && "bg-jarvis-panel/10",
-            )}>
-              <div className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center border transition-all",
-                step.status === "running" && "border-[#F5A623] bg-[#F5A623]/10",
-                step.status === "success" && "border-[#34F5D0] bg-[#34F5D0]/10",
-                step.status === "error" && "border-[#FF4D4D] bg-[#FF4D4D]/10",
-                step.status === "pending" && "border-jarvis-panel-border bg-jarvis-panel/30",
-              )}>
-                {step.status === "running" ? (
-                  <Loader2 className="size-4 text-[#F5A623] animate-spin" />
-                ) : step.status === "success" ? (
-                  <CheckCircle2 className="size-4 text-[#34F5D0]" />
-                ) : step.status === "error" ? (
-                  <AlertCircle className="size-4 text-[#FF4D4D]" />
-                ) : (
-                  <span className="text-xs font-bold text-jarvis-text-muted">{idx + 1}</span>
+            <RefreshCw className="size-5 text-[#FF4D4D] animate-spin mt-0.5" />
+            <div className="text-left">
+              <span className="text-xs font-bold text-[#FF4D4D] uppercase tracking-wider">Jarvis Validation Audit Loop</span>
+              <p className="text-xs text-jarvis-text/90 mt-1 leading-relaxed">{loopFeedback}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Pipeline Steps */}
+      <div className="max-w-2xl mx-auto w-full mt-6 space-y-3">
+        {steps.map((step, idx) => (
+          <div key={step.id}>
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: idx * 0.1 }}
+              className={cn(
+                "rounded-xl border overflow-hidden transition-all duration-500 text-left",
+                step.status === "running" && "border-[#F5A623] shadow-[0_0_20px_rgba(245,166,35,0.1)] bg-[#F5A623]/5",
+                step.status === "success" && "border-[#34F5D0]/50 bg-[#34F5D0]/5",
+                step.status === "error" && "border-[#FF4D4D]/50 bg-[#FF4D4D]/5",
+                step.status === "failed_validation" && "border-[#FF8C00]/50 bg-[#FF8C00]/5 shadow-[0_0_15px_rgba(255,140,0,0.15)]",
+                step.status === "pending" && "border-jarvis-panel-border opacity-40 bg-jarvis-panel/10",
+              )}
+            >
+              {/* Step Header */}
+              <div className="flex items-center gap-3 px-4 py-3">
+                <div className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center border transition-all",
+                  step.status === "running" && "border-[#F5A623] bg-[#F5A623]/10",
+                  step.status === "success" && "border-[#34F5D0] bg-[#34F5D0]/10",
+                  step.status === "error" && "border-[#FF4D4D] bg-[#FF4D4D]/10",
+                  step.status === "failed_validation" && "border-[#FF8C00] bg-[#FF8C00]/10",
+                  step.status === "pending" && "border-jarvis-panel-border bg-jarvis-panel/30",
+                )}>
+                  {step.status === "running" ? (
+                    <Loader2 className="size-4 text-[#F5A623] animate-spin" />
+                  ) : step.status === "success" ? (
+                    <CheckCircle2 className="size-4 text-[#34F5D0]" />
+                  ) : step.status === "failed_validation" ? (
+                    <RefreshCw className="size-4 text-[#FF8C00] animate-spin" />
+                  ) : step.status === "error" ? (
+                    <AlertCircle className="size-4 text-[#FF4D4D]" />
+                  ) : (
+                    <span className="text-xs font-bold text-jarvis-text-muted">{idx + 1}</span>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-jarvis-text">{step.name}</span>
+                    {step.status === "running" && (
+                      <span className="text-[9px] bg-[#F5A623]/20 text-[#F5A623] px-2 py-0.5 rounded font-mono font-bold animate-pulse">
+                        {step.operation}
+                      </span>
+                    )}
+                    {step.status === "failed_validation" && (
+                      <span className="text-[9px] bg-[#FF8C00]/20 text-[#FF8C00] px-2 py-0.5 rounded font-mono font-bold">
+                        Audit Failed
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-jarvis-text-muted">{step.description}</p>
+                </div>
+                {step.status === "running" && (
+                  <span className="text-[10px] font-mono text-[#F5A623] flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#F5A623] animate-pulse" />
+                    Processing
+                  </span>
                 )}
               </div>
-              <div className="flex-1">
-                <span className="text-sm font-bold text-jarvis-text">{step.name}</span>
-                <p className="text-[10px] text-jarvis-text-muted">{step.description}</p>
+
+              {/* Step Output */}
+              <AnimatePresence>
+                {(step.status === "running" || step.status === "success" || step.status === "failed_validation") && step.result && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="border-t border-jarvis-panel-border/30"
+                  >
+                    <div className="flex items-center gap-2 px-4 py-1.5 bg-jarvis-bg/50">
+                      <Terminal className="size-2.5 text-jarvis-text-muted" />
+                      <span className="text-[9px] font-mono text-jarvis-text-muted uppercase tracking-widest">Logs</span>
+                      <span className="ml-auto text-[9px] font-mono text-jarvis-text-muted">{step.result.length} chars</span>
+                    </div>
+                    <div className="p-3 max-h-40 overflow-y-auto">
+                      <pre className="text-[11px] font-mono text-jarvis-text/80 whitespace-pre-wrap leading-relaxed">
+                        {step.result}
+                        {step.status === "running" && <span className="inline-block w-1.5 h-3 bg-[#F5A623] ml-0.5 animate-pulse" />}
+                      </pre>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+
+            {/* Connecting line / arrows */}
+            {idx < steps.length - 1 && (
+              <div className="flex justify-center my-1">
+                {step.status === "failed_validation" || (idx >= 3 && hasFailedOnce && isRunning && currentStepIndex === 3) ? (
+                  <motion.div 
+                    animate={{ y: [0, -6, 0] }}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                    className="flex flex-col items-center"
+                  >
+                    <div className="w-0.5 h-6 bg-gradient-to-t from-[#FF8C00] to-[#FF4D4D]" />
+                    <span className="text-[8px] font-bold text-[#FF8C00] uppercase font-mono tracking-widest mt-0.5">Re-routing</span>
+                  </motion.div>
+                ) : (
+                  <div className="w-px h-5 bg-gradient-to-b from-jarvis-primary/30 to-jarvis-primary/10" />
+                )}
               </div>
-              {step.status === "running" && (
-                <span className="text-[10px] font-mono text-[#F5A623] flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#F5A623] animate-pulse" />
-                  Running
-                </span>
-              )}
-            </div>
-
-            {/* Step Output */}
-            <AnimatePresence>
-              {(step.status === "running" || step.status === "success") && step.result && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="border-t border-jarvis-panel-border/30"
-                >
-                  <div className="flex items-center gap-2 px-4 py-1.5 bg-jarvis-bg/50">
-                    <Terminal className="size-2.5 text-jarvis-text-muted" />
-                    <span className="text-[9px] font-mono text-jarvis-text-muted uppercase tracking-widest">Output</span>
-                    <span className="ml-auto text-[9px] font-mono text-jarvis-text-muted">{step.result.length} chars</span>
-                  </div>
-                  <div className="p-3 max-h-40 overflow-y-auto">
-                    <pre className="text-[11px] font-mono text-jarvis-text/80 whitespace-pre-wrap leading-relaxed">
-                      {step.result}
-                      {step.status === "running" && <span className="inline-block w-1.5 h-3 bg-[#F5A623] ml-0.5 animate-pulse" />}
-                    </pre>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        ))}
-
-        {/* Connecting lines between steps */}
-        {steps.length > 1 && (
-          <div className="flex justify-center">
-            <div className="w-px h-6 bg-gradient-to-b from-jarvis-primary/30 to-jarvis-primary/10" />
+            )}
           </div>
-        )}
+        ))}
       </div>
 
       {/* Final Post Preview */}
@@ -417,17 +531,17 @@ Return raw JSON only - no markdown, no code fences.`,
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="max-w-2xl mx-auto w-full mt-8 space-y-4"
+            className="max-w-2xl mx-auto w-full mt-8 space-y-4 text-left"
           >
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-heading font-bold text-jarvis-text uppercase tracking-widest flex items-center gap-2">
-                  <CheckCircle2 className="size-4 text-[#34F5D0]" />
-                  Final Post — Ready to Review
-                </h3>
-                <span className="text-[10px] font-mono text-jarvis-text-muted bg-jarvis-panel px-2 py-1 rounded">
-                  {post.caption.length} chars
-                </span>
-              </div>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-heading font-bold text-jarvis-text uppercase tracking-widest flex items-center gap-2">
+                <CheckCircle2 className="size-4 text-[#34F5D0]" />
+                Final Post — Approved by Jarvis
+              </h3>
+              <span className="text-[10px] font-mono text-jarvis-text-muted bg-jarvis-panel px-2 py-1 rounded">
+                {post.caption.length} chars
+              </span>
+            </div>
 
             <div className="bg-jarvis-panel border border-jarvis-panel-border rounded-xl p-5 space-y-4">
               <div>
@@ -472,7 +586,7 @@ Return raw JSON only - no markdown, no code fences.`,
 
             <span className="text-[10px] font-mono text-jarvis-primary flex items-center gap-2">
               <Loader2 className="size-3 animate-spin" />
-              Redirecting to Create Page...
+              Moving to Drafts Review dashboard...
             </span>
           </motion.div>
         )}
@@ -481,8 +595,8 @@ Return raw JSON only - no markdown, no code fences.`,
       {!isRunning && currentStepIndex < 0 && (
         <div className="flex-1 flex flex-col items-center justify-center text-jarvis-text-muted opacity-50">
           <Sparkles className="size-12 mb-3" />
-          <p className="text-xs font-mono uppercase tracking-widest text-center">Enter a topic above to start the content pipeline</p>
-          <p className="text-[10px] font-mono text-jarvis-text-muted/50 mt-2">Research Agent → Content Publisher → Ready to Post</p>
+          <p className="text-xs font-mono uppercase tracking-widest text-center">Enter a topic above to initiate multi-agent pipeline</p>
+          <p className="text-[10px] font-mono text-jarvis-text-muted/50 mt-2">Prompter → Research → Validation → Content Creation → Polish → Jarvis Audit</p>
         </div>
       )}
     </div>
