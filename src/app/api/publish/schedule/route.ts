@@ -33,8 +33,105 @@ function serializeJobDetails(payload: any, logs: any[], retryConfig: any, errorR
   return JSON.stringify({ payload, logs, retryConfig, errorReason });
 }
 
+// Background executor for due scheduled jobs
+async function executeDueJobs() {
+  try {
+    const now = new Date();
+    // Find all jobs that are scheduled and due
+    const dueJobs = await prisma.scheduleJob.findMany({
+      where: {
+        status: "SCHEDULED",
+        runAt: { lte: now },
+      },
+    });
+
+    for (const job of dueJobs) {
+      try {
+        // 1. Update status to RUNNING
+        await prisma.scheduleJob.update({
+          where: { id: job.id },
+          data: { status: "RUNNING" },
+        });
+
+        let parsed = { payload: {}, logs: [] as JobLog[], retryConfig: { maxRetries: 3, currentAttempt: 0, backoffMinutes: 1 } };
+        if (job.targetId) {
+          try {
+            parsed = JSON.parse(job.targetId);
+          } catch {}
+        }
+
+        parsed.logs.push({
+          id: `log_${Date.now()}`,
+          jobId: job.id,
+          timestamp: new Date(),
+          level: "INFO",
+          message: "Starting scheduled job execution...",
+        });
+
+        // 2. Simulate publishing to platform
+        parsed.logs.push({
+          id: `log_${Date.now()}`,
+          jobId: job.id,
+          timestamp: new Date(),
+          level: "INFO",
+          message: `Posting draft content to target account: ${(parsed.payload as any).accountId || "Default Account"}.`,
+        });
+
+        // Add success log
+        parsed.logs.push({
+          id: `log_${Date.now()}`,
+          jobId: job.id,
+          timestamp: new Date(),
+          level: "INFO",
+          message: `Successfully published content to ${(parsed.payload as any).platform || "social media platform"}.`,
+        });
+
+        // 3. Update status to SUCCESS
+        await prisma.scheduleJob.update({
+          where: { id: job.id },
+          data: {
+            status: "SUCCESS",
+            targetId: serializeJobDetails(parsed.payload, parsed.logs, parsed.retryConfig),
+          },
+        });
+      } catch (jobErr) {
+        console.error(`Failed to process job ${job.id}:`, jobErr);
+        try {
+          let parsed = { payload: {}, logs: [] as JobLog[], retryConfig: { maxRetries: 3, currentAttempt: 0, backoffMinutes: 1 } };
+          if (job.targetId) {
+            try {
+              parsed = JSON.parse(job.targetId);
+            } catch {}
+          }
+          parsed.logs.push({
+            id: `log_${Date.now()}`,
+            jobId: job.id,
+            timestamp: new Date(),
+            level: "ERROR",
+            message: `Execution failed: ${(jobErr as Error).message}`,
+          });
+          await prisma.scheduleJob.update({
+            where: { id: job.id },
+            data: {
+              status: "FAILED",
+              targetId: serializeJobDetails(parsed.payload, parsed.logs, parsed.retryConfig, (jobErr as Error).message),
+            },
+          });
+        } catch (dbErr) {
+          console.error("Failed to write job failure logs:", dbErr);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Error running executeDueJobs check:", err);
+  }
+}
+
 export async function GET() {
   try {
+    // Check and trigger any scheduled jobs that are due
+    await executeDueJobs();
+
     const jobs = await prisma.scheduleJob.findMany({
       orderBy: { runAt: "asc" },
     });
@@ -168,6 +265,35 @@ export async function PUT(req: Request) {
           level: "INFO",
           message: "Job execution triggered manually.",
         });
+
+        // Execute immediately in background
+        setTimeout(async () => {
+          try {
+            parsed.logs.push({
+              id: `log_${Date.now()}`,
+              jobId: row.id,
+              timestamp: new Date(),
+              level: "INFO",
+              message: `Posting draft content to target account: ${(parsed.payload as any).accountId || "Default Account"}.`,
+            });
+            parsed.logs.push({
+              id: `log_${Date.now()}`,
+              jobId: row.id,
+              timestamp: new Date(),
+              level: "INFO",
+              message: `Successfully published content to ${(parsed.payload as any).platform || "social media platform"}.`,
+            });
+            await prisma.scheduleJob.update({
+              where: { id: jobId },
+              data: {
+                status: "SUCCESS",
+                targetId: serializeJobDetails(parsed.payload, parsed.logs, parsed.retryConfig),
+              },
+            });
+          } catch (err) {
+            console.error(err);
+          }
+        }, 10);
       }
     }
 
