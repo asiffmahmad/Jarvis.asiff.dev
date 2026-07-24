@@ -25,23 +25,17 @@ export function CarouselSidebarLeft({ activeSlideId, addImageElement }: Props) {
     if (!prompt.trim() || !activeSlideId) return;
     setGenerating(true);
     try {
-      // Simulate high quality API request delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      const seed = Math.floor(Math.random() * 1000000);
-      const stylePrompt = style === "Minimal" 
-        ? "clean simple flat illustration style vector graphics on a solid matching background" 
-        : style === "Neon Sci-fi" 
-        ? "glowing neon sci-fi theme cyberpunk elements, dark dramatic lighting, ultra-detailed 8k" 
-        : style === "Cyberpunk" 
-        ? "gritty cyberpunk city style, holographic accents, neon lights, retrofuturism" 
-        : "sleek professional corporate clean business tech design aesthetic";
-        
-      const fullPrompt = `${prompt}, ${stylePrompt}`;
-      const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=800&height=450&nologo=true&seed=${seed}`;
-      
-      addImageElement(activeSlideId, url);
-      setPrompt("");
+      const res = await fetch("/api/carousel/image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, style }),
+      });
+      if (!res.ok) throw new Error("Failed to generate image");
+      const data = await res.json();
+      if (data.url) {
+        addImageElement(activeSlideId, data.url);
+        setPrompt("");
+      }
     } catch (err) {
       console.error("Failed to generate image:", err);
     } finally {
