@@ -233,25 +233,18 @@ export default function CreatePage() {
         const result = await res.json();
         const items = result.drafts || [];
         setDrafts(items);
-        if (items.length > 0) {
-          const currentSelectId = selectId || selectedDraftId;
-          const nextSelect = items.some((d: any) => d.id === currentSelectId)
-            ? currentSelectId
-            : items[0].id;
-          
-          setSelectedDraftId(nextSelect);
-          const active = items.find((d: any) => d.id === nextSelect);
+        if (selectId && items.some((d: any) => d.id === selectId)) {
+          setSelectedDraftId(selectId);
+          const active = items.find((d: any) => d.id === selectId);
           if (active && active.post) {
             setEditCaption(active.post.caption);
           }
-        } else {
-          setSelectedDraftId(null);
         }
       }
     } catch (err) {
       console.error("Failed to fetch drafts:", err);
     }
-  }, [selectedDraftId]);
+  }, []);
 
   const saveDraftToDb = async (draftData: PostData, id?: string) => {
     const targetId = id || selectedDraftId || undefined;
@@ -278,18 +271,8 @@ export default function CreatePage() {
       await fetch(`/api/publish/draft?id=${targetId}`, {
         method: "DELETE",
       });
-      // Filter out the deleted draft locally first
       setDrafts(prev => prev.filter(d => d.id !== targetId));
-      // Re-evaluate selected draft
-      const remaining = drafts.filter(d => d.id !== targetId);
-      if (remaining.length > 0) {
-        setSelectedDraftId(remaining[0].id);
-        if (remaining[0].post) {
-          setEditCaption(remaining[0].post.caption);
-        }
-      } else {
-        setSelectedDraftId(null);
-      }
+      setSelectedDraftId(null);
     } catch (err) {
       console.error("Failed to delete draft from MySQL:", err);
     }
@@ -496,29 +479,95 @@ export default function CreatePage() {
     }
   };
 
-  if (!post && !generating && !generationError && !pendingGen) {
+  if (!selectedDraftId && !generating && !generationError) {
+    if (drafts.length === 0) {
+      return (
+        <AppLayout>
+          <div className="h-full w-full overflow-y-auto bg-jarvis-bg p-6">
+            <div className="max-w-3xl mx-auto space-y-6">
+              <div className="flex items-center gap-3">
+                <PenSquare className="size-6 text-jarvis-primary" />
+                <h1 className="text-2xl font-heading font-bold uppercase tracking-widest text-jarvis-primary text-glow">
+                  Create Content
+                </h1>
+              </div>
+              <div className="glass-panel p-12 text-center">
+                <PenSquare className="size-12 text-jarvis-text-muted/30 mx-auto mb-4" />
+                <p className="text-jarvis-text-muted">No posts to review.</p>
+                <p className="text-xs font-mono text-jarvis-text-muted/50 mt-2">
+                  Generate a post in Agents or Research first.
+                </p>
+                <button
+                  onClick={() => router.push("/agents")}
+                  className="mt-6 px-5 py-2.5 rounded-xl bg-jarvis-primary/10 border border-jarvis-primary/30 text-jarvis-primary text-xs font-bold uppercase tracking-wider hover:bg-jarvis-primary/20 transition-colors"
+                >
+                  Go to Agents
+                </button>
+              </div>
+            </div>
+          </div>
+        </AppLayout>
+      );
+    }
+
     return (
       <AppLayout>
         <div className="h-full w-full overflow-y-auto bg-jarvis-bg p-6">
-          <div className="max-w-3xl mx-auto space-y-6">
-            <div className="flex items-center gap-3">
-              <PenSquare className="size-6 text-jarvis-primary" />
-              <h1 className="text-2xl font-heading font-bold uppercase tracking-widest text-jarvis-primary text-glow">
-                Create Content
-              </h1>
-            </div>
-            <div className="glass-panel p-12 text-center">
-              <PenSquare className="size-12 text-jarvis-text-muted/30 mx-auto mb-4" />
-              <p className="text-jarvis-text-muted">No post to review.</p>
-              <p className="text-xs font-mono text-jarvis-text-muted/50 mt-2">
-                Generate a post in Agents or Research first.
-              </p>
+          <div className="max-w-6xl mx-auto space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <PenSquare className="size-6 text-jarvis-primary" />
+                <h1 className="text-2xl font-heading font-bold uppercase tracking-widest text-jarvis-primary text-glow">
+                  Review Drafts
+                </h1>
+                <span className="text-xs bg-jarvis-primary/20 text-jarvis-primary px-2.5 py-1 rounded-full font-bold">
+                  {drafts.length} total
+                </span>
+              </div>
               <button
                 onClick={() => router.push("/agents")}
-                className="mt-6 px-5 py-2.5 rounded-xl bg-jarvis-primary/10 border border-jarvis-primary/30 text-jarvis-primary text-xs font-bold uppercase tracking-wider hover:bg-jarvis-primary/20 transition-colors"
+                className="px-4 py-2 rounded-xl bg-jarvis-primary/10 border border-jarvis-primary/30 text-jarvis-primary text-xs font-bold uppercase tracking-wider hover:bg-jarvis-primary/20 transition-all"
               >
-                Go to Agents
+                + New Draft
               </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {drafts.map(d => (
+                <div
+                  key={d.id}
+                  onClick={() => {
+                    setSelectedDraftId(d.id);
+                    if (d.post) setEditCaption(d.post.caption);
+                  }}
+                  className="glass-panel p-5 hover:border-jarvis-primary/50 transition-all cursor-pointer flex flex-col justify-between h-48 group hover:-translate-y-1 duration-200"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] px-2 py-0.5 rounded font-mono uppercase bg-jarvis-panel border border-jarvis-panel-border/30 text-jarvis-text-muted">
+                        {d.status === "pending_generation" ? "loading" : (d.post?.platform || "post")}
+                      </span>
+                      <span className="text-[9px] text-jarvis-text-muted/60 font-mono">
+                        {new Date(d.updatedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-sm text-jarvis-text group-hover:text-jarvis-primary transition-colors line-clamp-2">
+                      {d.title}
+                    </h3>
+                    {d.post && (
+                      <p className="text-xs text-jarvis-text-muted line-clamp-3 leading-relaxed mt-1">
+                        {d.post.caption}
+                      </p>
+                    )}
+                  </div>
+                  <div className="pt-3 border-t border-jarvis-panel-border/30 flex items-center justify-between mt-auto">
+                    <span className="text-[9px] text-jarvis-text-muted/50 font-mono">
+                      Click to review
+                    </span>
+                    <ArrowLeft className="size-3.5 text-jarvis-text-muted group-hover:text-jarvis-primary group-hover:translate-x-1 transition-all rotate-180" />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -623,9 +672,10 @@ export default function CreatePage() {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button onClick={() => router.push("/agents")} className="p-2 hover:bg-jarvis-panel rounded-lg transition-colors text-jarvis-text-muted">
-                <ArrowLeft className="size-4" />
+              <button onClick={() => setSelectedDraftId(null)} className="p-2 hover:bg-jarvis-panel rounded-lg transition-colors text-jarvis-text-muted flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
+                <ArrowLeft className="size-4" /> Back to Drafts
               </button>
+              <span className="text-jarvis-text-muted/30">|</span>
               <PenSquare className="size-6 text-jarvis-primary" />
               <h1 className="text-2xl font-heading font-bold uppercase tracking-widest text-jarvis-primary text-glow">
                 Review Post
@@ -638,47 +688,9 @@ export default function CreatePage() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Drafts Sidebar */}
-            <div className="lg:col-span-3 space-y-3">
-              <div className="flex items-center gap-2">
-                <FileText className="size-4 text-jarvis-text-muted" />
-                <h2 className="text-xs font-heading font-bold text-jarvis-text uppercase tracking-widest">Active Drafts</h2>
-                <span className="text-[10px] bg-jarvis-primary/20 text-jarvis-primary px-1.5 py-0.5 rounded font-bold font-mono">
-                  {drafts.length}
-                </span>
-              </div>
-              <div className="glass-panel p-2 space-y-1 max-h-[600px] overflow-y-auto">
-                {drafts.map(d => (
-                  <button
-                    key={d.id}
-                    onClick={() => {
-                      setSelectedDraftId(d.id);
-                      if (d.post) setEditCaption(d.post.caption);
-                    }}
-                    className={cn(
-                      "w-full text-left p-3 rounded-lg border transition-all flex flex-col gap-1",
-                      selectedDraftId === d.id
-                        ? "bg-jarvis-primary/10 border-jarvis-primary/30 text-jarvis-primary"
-                        : "bg-transparent border-transparent text-jarvis-text-muted hover:bg-jarvis-panel"
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-bold text-xs truncate flex-1">{d.title}</span>
-                      <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-mono bg-jarvis-panel border border-jarvis-panel-border/30">
-                        {d.status === "pending_generation" ? "loading" : (d.post?.platform || "post")}
-                      </span>
-                    </div>
-                    <span className="text-[9px] text-jarvis-text-muted/60 font-mono">
-                      {new Date(d.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Platform Preview */}
-            <div className="lg:col-span-4 space-y-3">
+            <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Eye className="size-4 text-jarvis-text-muted" />
                 <h2 className="text-xs font-heading font-bold text-jarvis-text uppercase tracking-widest">Platform Preview</h2>
@@ -692,7 +704,7 @@ export default function CreatePage() {
             </div>
 
             {/* Post Details & Actions */}
-            <div className="lg:col-span-5 space-y-4">
+            <div className="space-y-4">
               <div className="glass-panel p-5 space-y-4">
                 {/* Platform selector */}
                 <div>
