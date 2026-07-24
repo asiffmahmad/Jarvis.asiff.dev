@@ -262,11 +262,14 @@ If the post passes audits, write a validation summary approving the post.`,
       const finalJson = steps[4].result || currentInput;
       const parsed = tryParsePost(finalJson);
       if (parsed) {
-        setPost(parsed);
+        setPost({
+          ...parsed,
+          title: parsed.title || topic.trim()
+        });
       } else {
         // Fallback parse
         setPost({
-          title: "Optimized Post",
+          title: topic.trim(),
           caption: finalJson,
           hashtags: ["automation", "ai"],
           mediaIdeas: ["Visual summary graphic"],
