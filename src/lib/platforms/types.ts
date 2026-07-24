@@ -1,4 +1,4 @@
-export type PlatformId = 'instagram' | 'linkedin' | 'x' | 'facebook' | 'youtube' | 'threads' | 'tiktok' | 'telegram' | 'pinterest' | 'reddit' | 'medium';
+export type PlatformId = 'instagram' | 'linkedin' | 'x';
 export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'expired' | 'error' | 'syncing';
 
 export interface ProviderCapabilities {

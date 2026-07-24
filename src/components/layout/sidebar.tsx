@@ -15,36 +15,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   PenSquare,
-  Library,
-  Mail,
-  Calendar,
   CalendarDays,
-  Globe,
-  Database,
-  Workflow,
-  Film,
-  Bot,
   Share2,
-  Network,
-  Layout,
-  BarChart3,
-  Users,
   Settings,
-  User,
-  Coins,
-  Activity,
+  Bot,
   ChevronLeft,
   ChevronRight,
-  TerminalSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 /* ------------------------------------------------------------------ */
 /*  Navigation Data                                                    */
@@ -52,31 +31,14 @@ import {
 
 const mainNavItems = [
   { id: "mission-control", label: "Mission Control", icon: LayoutDashboard, href: "/" },
-  { id: "dashboard", label: "Dashboard", icon: BarChart3, href: "/dashboard" },
   { id: "create", label: "Create Content", icon: PenSquare, href: "/create" },
-  { id: "calendar", label: "Calendar", icon: CalendarDays, href: "/calendar" },
-  { id: "mail", label: "AI Mail", icon: Mail, href: "/mail" },
-  { id: "research", label: "Research", icon: Globe, href: "/research" },
-  { id: "knowledge", label: "Knowledge Hub", icon: Database, href: "/knowledge" },
-  { id: "analytics", label: "Analytics", icon: BarChart3, href: "/analytics" },
-  { id: "automation", label: "Automation Builder", icon: Workflow, href: "/automation" },
   { id: "agents", label: "AI Agents", icon: Bot, href: "/agents" },
-  { id: "scheduler", label: "Scheduler", icon: Calendar, href: "/scheduler" },
-  { id: "platforms", label: "Platform Manager", icon: Share2, href: "/platforms" },
-  { id: "integrations", label: "Integration Hub", icon: Network, href: "/integrations" },
-  { id: "library", label: "Content Library", icon: Library, href: "/library" },
-  { id: "media", label: "Media Studio", icon: Film, href: "/media" },
-  { id: "prompts", label: "Prompt Library", icon: TerminalSquare, href: "/prompts" },
-  { id: "templates", label: "Templates", icon: Layout, href: "/templates" },
-  { id: "accounts", label: "Accounts", icon: Users, href: "/accounts" },
+  { id: "scheduler", label: "Schedule", icon: CalendarDays, href: "/scheduler" },
+  { id: "platforms", label: "Platforms", icon: Share2, href: "/platforms" },
   { id: "settings", label: "Settings", icon: Settings, href: "/settings" },
 ];
 
-const bottomNavItems = [
-  { id: "profile", label: "Profile", icon: User, href: "/profile" },
-  { id: "credits", label: "Credits", icon: Coins, href: "/credits" },
-  { id: "status", label: "System Status", icon: Activity, href: "/status" },
-];
+const bottomNavItems: typeof mainNavItems = [];
 
 /* ------------------------------------------------------------------ */
 /*  Sidebar Component                                                  */
@@ -128,14 +90,15 @@ export function Sidebar() {
       </div>
 
       {/* Main Navigation */}
-      <ScrollArea className="flex-1 py-4">
+      <div className="flex-1 py-4 overflow-y-auto">
         <nav className="flex flex-col gap-1 px-3">
           {mainNavItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
 
-            const linkContent = (
+            return (
               <Link
+                key={item.id}
                 href={item.href}
                 className={cn(
                   "group flex items-center gap-3 rounded-[12px] px-3 py-2.5",
@@ -146,7 +109,6 @@ export function Sidebar() {
                     : "text-jarvis-text-secondary hover:bg-jarvis-primary/5 hover:text-jarvis-text"
                 )}
               >
-                {/* Active indicator */}
                 {isActive && (
                   <motion.div
                     layoutId="sidebar-active"
@@ -179,78 +141,16 @@ export function Sidebar() {
                 </AnimatePresence>
               </Link>
             );
-
-            if (sidebarCollapsed) {
-              return (
-                <Tooltip key={item.id} delayDuration={0}>
-                  <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-                  <TooltipContent side="right" className="font-medium">
-                    {item.label}
-                  </TooltipContent>
-                </Tooltip>
-              );
-            }
-
-            return <div key={item.id}>{linkContent}</div>;
           })}
         </nav>
-      </ScrollArea>
+      </div>
 
-      {/* Bottom Section */}
+      {/* Collapse Toggle */}
       <div className="border-t border-jarvis-border py-3 px-3">
-        <nav className="flex flex-col gap-1">
-          {bottomNavItems.map((item) => {
-            const isActive = pathname === item.href;
-            const Icon = item.icon;
-
-            const linkContent = (
-              <Link
-                href={item.href}
-                className={cn(
-                  "group flex items-center gap-3 rounded-[12px] px-3 py-2",
-                  "transition-all duration-250",
-                  isActive
-                    ? "bg-jarvis-primary/10 text-jarvis-primary"
-                    : "text-jarvis-text-muted hover:bg-jarvis-primary/5 hover:text-jarvis-text-secondary"
-                )}
-              >
-                <Icon className="size-4 shrink-0" />
-                <AnimatePresence mode="wait">
-                  {!sidebarCollapsed && (
-                    <motion.span
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: "auto" }}
-                      exit={{ opacity: 0, width: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="text-xs font-medium whitespace-nowrap overflow-hidden"
-                    >
-                      {item.label}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </Link>
-            );
-
-            if (sidebarCollapsed) {
-              return (
-                <Tooltip key={item.id} delayDuration={0}>
-                  <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-                  <TooltipContent side="right" className="text-xs">
-                    {item.label}
-                  </TooltipContent>
-                </Tooltip>
-              );
-            }
-
-            return <div key={item.id}>{linkContent}</div>;
-          })}
-        </nav>
-
-        {/* Collapse Toggle */}
         <button
           onClick={toggleSidebar}
           className={cn(
-            "mt-3 w-full flex items-center justify-center gap-2",
+            "w-full flex items-center justify-center gap-2",
             "rounded-[12px] px-3 py-2",
             "text-jarvis-text-muted hover:text-jarvis-text-secondary",
             "hover:bg-jarvis-primary/5",

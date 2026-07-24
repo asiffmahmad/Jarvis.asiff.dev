@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Sparkles, Bookmark, Terminal } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Sparkles, Bookmark, Terminal, Send } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ResearchState } from "@/lib/research/use-research";
+import { storeResearchContext } from "@/lib/cross-page-store";
 import ReactMarkdown from "react-markdown";
 
 interface RightPanelProps {
@@ -14,15 +16,18 @@ export function ResearchRightPanel({ state }: RightPanelProps) {
   const { activeArticle, isBookmarked, toggleBookmark } = state;
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
+  const router = useRouter();
   
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Reset summary when article changes
-  const [lastArticleId, setLastArticleId] = useState<string | null>(null);
-  if (activeArticle && activeArticle.id !== lastArticleId) {
-    setSummary(null);
-    setLastArticleId(activeArticle.id);
-  }
+  const lastArticleIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (activeArticle && activeArticle.id !== lastArticleIdRef.current) {
+      setSummary(null);
+      lastArticleIdRef.current = activeArticle.id;
+    }
+  }, [activeArticle]);
 
   const handleSummarize = async () => {
     if (isSummarizing || !activeArticle) return;
@@ -73,8 +78,9 @@ export function ResearchRightPanel({ state }: RightPanelProps) {
   if (!activeArticle) {
     return (
       <div className="flex-1 h-full flex flex-col items-center justify-center bg-jarvis-bg-deepest text-jarvis-text-muted">
-        <Terminal className="size-12 opacity-30 mb-4" />
-        <span className="font-heading uppercase tracking-widest text-xs">Select Article to Read</span>
+          <Terminal className="size-12 opacity-30 mb-4" />
+          <span className="font-heading uppercase tracking-widest text-xs">Select Article to Read</span>
+          <p className="text-[10px] font-mono text-jarvis-text-muted/50 mt-2 text-center">Click an article or ask AI to research a topic above</p>
       </div>
     );
   }
@@ -85,6 +91,12 @@ export function ResearchRightPanel({ state }: RightPanelProps) {
         <h2 className="text-sm font-heading font-bold text-jarvis-text uppercase tracking-widest">
           Reader
         </h2>
+        <button
+          onClick={() => { storeResearchContext({ topic: activeArticle.title, context: activeArticle.content }); router.push("/agents"); }}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full transition-all text-xs font-bold uppercase tracking-wider bg-jarvis-primary/10 border border-jarvis-primary/30 text-jarvis-primary hover:bg-jarvis-primary hover:text-jarvis-bg-deepest mr-2"
+        >
+          <Send className="size-3" /> Generate Post
+        </button>
         <button 
           onClick={() => toggleBookmark(activeArticle.id)}
           className={`p-2 rounded-full transition-colors border ${isBookmarked(activeArticle.id) ? 'bg-jarvis-primary/20 border-jarvis-primary/50 text-jarvis-primary' : 'bg-jarvis-panel/30 border-jarvis-panel-border/50 text-jarvis-text-muted hover:text-jarvis-text'}`}
@@ -123,7 +135,7 @@ export function ResearchRightPanel({ state }: RightPanelProps) {
           <h1 className="text-3xl font-bold text-jarvis-text mb-4 leading-tight">{activeArticle.title}</h1>
           <div className="flex items-center gap-4 text-xs text-jarvis-text-muted mb-8 pb-4 border-b border-jarvis-panel-border/30">
             <span>By {activeArticle.author}</span>
-            <span>{activeArticle.publishedAt.toLocaleDateString()}</span>
+            <span>{new Date(activeArticle.publishedAt).toLocaleDateString()}</span>
           </div>
           
           <div className="prose prose-invert prose-jarvis max-w-none">

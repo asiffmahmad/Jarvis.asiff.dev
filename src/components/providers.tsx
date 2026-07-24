@@ -14,6 +14,7 @@ import { ThemeProvider } from "@/lib/theme";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { AuthProvider } from "@/lib/auth";
+import { SessionProvider } from "next-auth/react";
 
 interface ProvidersProps {
   children: ReactNode;
@@ -22,13 +23,15 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <ThemeProvider>
-          <TooltipProvider delayDuration={300}>
-            {children}
-          </TooltipProvider>
-        </ThemeProvider>
-      </AuthProvider>
+      <SessionProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            <TooltipProvider delayDuration={300}>
+              {children}
+            </TooltipProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </SessionProvider>
     </ErrorBoundary>
   );
 }

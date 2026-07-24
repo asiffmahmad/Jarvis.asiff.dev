@@ -30,24 +30,6 @@ export class ProviderRegistry {
         id: "x", name: "X (Twitter)", brandColor: "#000000", isAvailable: true,
         capabilities: { publishText: true, publishImage: true, publishCarousel: false, publishVideo: true, draftSupport: false, scheduling: true, analytics: true, comments: true, hashtags: true }
       },
-      
-      // Future Architecture Placeholders
-      {
-        id: "facebook", name: "Facebook", brandColor: "#1877F2", isAvailable: false,
-        capabilities: { publishText: true, publishImage: true, publishCarousel: true, publishVideo: true, draftSupport: false, scheduling: true, analytics: true, comments: true, hashtags: false }
-      },
-      {
-        id: "youtube", name: "YouTube", brandColor: "#FF0000", isAvailable: false,
-        capabilities: { publishText: false, publishImage: false, publishCarousel: false, publishVideo: true, draftSupport: false, scheduling: true, analytics: true, comments: true, hashtags: true }
-      },
-      {
-        id: "threads", name: "Threads", brandColor: "#000000", isAvailable: false,
-        capabilities: { publishText: true, publishImage: true, publishCarousel: true, publishVideo: true, draftSupport: false, scheduling: false, analytics: false, comments: true, hashtags: false }
-      },
-      {
-        id: "tiktok", name: "TikTok", brandColor: "#000000", isAvailable: false,
-        capabilities: { publishText: false, publishImage: false, publishCarousel: false, publishVideo: true, draftSupport: false, scheduling: true, analytics: true, comments: true, hashtags: true }
-      }
     ];
 
     defaultProviders.forEach(p => this.providers.set(p.id, p));

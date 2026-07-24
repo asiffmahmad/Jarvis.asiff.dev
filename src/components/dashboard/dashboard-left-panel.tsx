@@ -1,28 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Activity, Server, AlertTriangle, Workflow } from "lucide-react";
+import { Activity, Server, Database } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useEffect, useState } from "react";
-import { globalEventBus } from "@/lib/events/event-bus";
 import { cn } from "@/lib/utils";
 
 export function DashboardLeftPanel() {
-  const [metrics, setMetrics] = useState({
-    queuedTasks: 0,
-    runningWorkflows: 0,
-    alerts: 0
-  });
-
-  useEffect(() => {
-    const unsub = globalEventBus.subscribe('*', (e) => {
-      if (e.type === 'workflow:started') setMetrics(m => ({ ...m, runningWorkflows: m.runningWorkflows + 1 }));
-      if (e.type === 'workflow:completed') setMetrics(m => ({ ...m, runningWorkflows: Math.max(0, m.runningWorkflows - 1) }));
-      if (e.type === 'system:alert' || e.type === 'agent:failed') setMetrics(m => ({ ...m, alerts: m.alerts + 1 }));
-    });
-    return () => unsub();
-  }, []);
-
   return (
     <motion.aside
       initial={{ x: -260 }}
@@ -47,35 +30,29 @@ export function DashboardLeftPanel() {
               <Server className="size-3" /> System Health
             </h3>
             <div className="space-y-3">
-              <HealthBar label="CPU Load (Simulated)" value={24} color="#34F5D0" />
-              <HealthBar label="Memory Usage" value={68} color="#F5A623" />
-              <HealthBar label="Database I/O" value={12} color="#34F5D0" />
+              <HealthBar label="DB Connectivity" value={100} color="#34F5D0" />
+              <HealthBar label="API Sync" value={100} color="#34F5D0" />
             </div>
           </section>
 
           <section>
             <h3 className="text-[10px] font-bold text-jarvis-text-muted uppercase tracking-widest mb-3 flex items-center gap-2">
-              <Workflow className="size-3" /> Execution Queue
+              <Database className="size-3" /> Data Core
             </h3>
             <div className="grid grid-cols-2 gap-2">
-              <MetricBox label="Running" value={metrics.runningWorkflows.toString()} color="text-[#34F5D0]" />
-              <MetricBox label="Queued" value={metrics.queuedTasks.toString()} color="text-jarvis-text-muted" />
+              <MetricBox label="Content" value="0" color="text-jarvis-text-muted" />
+              <MetricBox label="Workflows" value="0" color="text-jarvis-text-muted" />
             </div>
           </section>
 
           <section>
             <h3 className="text-[10px] font-bold text-jarvis-text-muted uppercase tracking-widest mb-3 flex items-center gap-2">
-              <AlertTriangle className="size-3" /> Active Alerts
+              <Activity className="size-3" /> Actionable Items
             </h3>
-            {metrics.alerts === 0 ? (
-              <div className="p-3 text-xs text-jarvis-text-muted text-center border border-jarvis-panel-border/30 rounded bg-jarvis-panel/10">
-                All systems nominal.
-              </div>
-            ) : (
-              <div className="p-3 text-xs text-[#FF4D4D] text-center border border-[#FF4D4D]/30 rounded bg-[#FF4D4D]/10">
-                {metrics.alerts} active alert(s)
-              </div>
-            )}
+            <div className="grid grid-cols-2 gap-2">
+              <MetricBox label="Unread Mail" value="0" color="text-jarvis-text-muted" />
+              <MetricBox label="Upcoming" value="0" color="text-jarvis-text-muted" />
+            </div>
           </section>
 
         </div>

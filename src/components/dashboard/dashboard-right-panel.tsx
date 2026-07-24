@@ -1,16 +1,44 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Info, Database, Zap } from "lucide-react";
-import { useAgentStatus } from "@/lib/events/use-events";
 
 interface RightPanelProps {
   selectedAgent: string | null;
 }
 
 export function DashboardRightPanel({ selectedAgent }: RightPanelProps) {
-  // We use the hook even if selectedAgent is null, it just won't update much.
-  const { status, currentTask } = useAgentStatus(selectedAgent || 'none');
+  const [agentData, setAgentData] = useState<{
+    id: string;
+    name: string;
+    description: string;
+    systemPrompt?: string;
+    model?: string;
+    temperature?: number;
+    isActive?: boolean;
+  } | null>(null);
+
+
+  useEffect(() => {
+    if (!selectedAgent) return;
+    
+    async function loadAgent() {
+      try {
+        const res = await fetch("/api/agents/registry");
+        if (res.ok) {
+          const allAgents = await res.json();
+          // Extract the core ID from selectedAgent, e.g. "agent-research" -> "agent_research"
+          const normalizedId = selectedAgent!.replace("-", "_");
+          const found = allAgents.find((a: { id: string }) => a.id === normalizedId || a.id === selectedAgent);
+          setAgentData(found || null);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    loadAgent();
+  }, [selectedAgent]);
 
   if (!selectedAgent) {
     return (
@@ -41,37 +69,35 @@ export function DashboardRightPanel({ selectedAgent }: RightPanelProps) {
         
         <section>
           <h3 className="text-sm font-bold text-jarvis-text mb-1 uppercase tracking-widest capitalize">
-            {selectedAgent.replace('agent-', '')} Agent
+            {agentData?.name || selectedAgent.replace('agent-', '')}
           </h3>
+          <p className="text-xs text-jarvis-text-muted mt-1 mb-2 leading-relaxed">
+            {agentData?.description || "Loading agent details..."}
+          </p>
           <div className="flex items-center gap-2 mt-2">
-            <div className={`w-2 h-2 rounded-full ${status === 'idle' ? 'bg-jarvis-panel-border' : status === 'executing' || status === 'thinking' ? 'bg-[#34F5D0] animate-pulse' : status === 'failed' ? 'bg-[#FF4D4D]' : 'bg-[#34F5D0]'}`} />
-            <span className="text-xs text-jarvis-text-muted uppercase tracking-wider">{status}</span>
+            <div className={`w-2 h-2 rounded-full bg-[#34F5D0]`} />
+            <span className="text-xs text-jarvis-text-muted uppercase tracking-wider">Online</span>
           </div>
         </section>
 
-        {currentTask && (
-          <section className="p-3 border border-jarvis-primary/30 bg-jarvis-primary/5 rounded-lg">
-            <h4 className="text-[9px] uppercase tracking-widest text-jarvis-primary mb-1 font-bold">Current Execution</h4>
-            <p className="text-xs text-jarvis-text font-mono leading-relaxed">{currentTask}</p>
-          </section>
-        )}
+
 
         <section>
           <h3 className="text-[10px] font-bold text-jarvis-text-muted uppercase tracking-widest mb-3 flex items-center gap-2">
-            <Database className="size-3" /> Shared Memory
+            <Database className="size-3" /> Core Configuration
           </h3>
           <div className="space-y-2 text-xs font-mono text-jarvis-text-muted">
             <div className="flex justify-between border-b border-jarvis-panel-border/30 pb-1">
-              <span>Read Bound:</span>
-              <span className="text-jarvis-text">Yes</span>
+              <span>Model Name:</span>
+              <span className="text-jarvis-text">{agentData?.model || "GPT-4"}</span>
             </div>
             <div className="flex justify-between border-b border-jarvis-panel-border/30 pb-1">
-              <span>Write Bound:</span>
-              <span className="text-jarvis-text">Yes</span>
+              <span>Temperature:</span>
+              <span className="text-jarvis-text">{agentData?.temperature || 0.7}</span>
             </div>
             <div className="flex justify-between pb-1">
-              <span>Context Window:</span>
-              <span className="text-jarvis-text">128k</span>
+              <span>Status:</span>
+              <span className="text-jarvis-text">{agentData?.isActive ? "Active" : "Inactive"}</span>
             </div>
           </div>
         </section>

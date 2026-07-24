@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Bot, Search, PenTool, Mail, Hash, Rocket, Code2, Network, BookOpen, Clock, Play } from "lucide-react";
+import { Bot, Search, PenTool, Mail, Hash, Rocket, Code2, Network, BookOpen, Play } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { AgentsState } from "@/lib/agents/use-agents";
@@ -29,7 +29,6 @@ export function AgentsSidebarLeft({ state }: SidebarProps) {
   const { agents, activeAgentId, setActiveAgentId } = state;
 
   const enabledAgents = agents.filter(a => a.isEnabled);
-  const futureAgents = agents.filter(a => !a.isEnabled);
 
   return (
     <motion.aside
@@ -73,30 +72,6 @@ export function AgentsSidebarLeft({ state }: SidebarProps) {
                 </div>
                 <p className="text-[10px] text-jarvis-text-muted leading-tight line-clamp-2 pl-6">{agent.description}</p>
               </button>
-            );
-          })}
-        </div>
-
-        <div className="space-y-1">
-          <h3 className="px-2 text-[10px] font-bold text-jarvis-text-muted uppercase tracking-widest mb-2 flex items-center gap-2">
-            <Clock className="size-3" /> Future Architecture
-          </h3>
-          {futureAgents.map((agent) => {
-            const Icon = getIconForCategory(agent.category);
-            
-            return (
-              <div
-                key={agent.id}
-                className="w-full flex flex-col gap-1 p-3 rounded-lg border border-transparent opacity-50 cursor-not-allowed"
-              >
-                <div className="flex items-center gap-2">
-                  <Icon className="size-4 text-jarvis-text-muted" />
-                  <span className="text-sm font-bold text-jarvis-text-muted">{agent.name}</span>
-                </div>
-                <div className="flex items-center gap-1 pl-6 mt-1">
-                  <span className="text-[9px] uppercase tracking-widest font-mono bg-jarvis-panel/50 px-1.5 py-0.5 rounded text-jarvis-text-muted/70">Unimplemented</span>
-                </div>
-              </div>
             );
           })}
         </div>

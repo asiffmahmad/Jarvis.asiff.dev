@@ -1,14 +1,17 @@
 export type AgentStatus = 'idle' | 'running' | 'success' | 'error';
-export type AgentCategory = 'research' | 'content' | 'email' | 'social' | 'seo' | 'automation' | 'support' | 'coding';
+export type AgentCategory = 'research' | 'content' | 'email' | 'social' | 'seo' | 'automation' | 'support' | 'coding' | 'general';
 
 export interface AgentDefinition {
   id: string;
   name: string;
   description: string;
   category: AgentCategory;
-  isEnabled: boolean;
+  isActive?: boolean;
+  isEnabled?: boolean;
+  systemPrompt?: string;
+  model?: string;
+  temperature?: number;
   capabilities: string[];
-  mockDelayMs?: number;
 }
 
 export interface AgentExecutionLog {

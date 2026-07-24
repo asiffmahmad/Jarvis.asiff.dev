@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, useRef, useEffect } from "react";
-import { Send, Square, Paperclip, Mic, Image as ImageIcon } from "lucide-react";
+import { Send, Square } from "lucide-react";
 
 interface ChatInputProps {
   input: string;
@@ -49,17 +49,7 @@ export function ChatInput({ input, handleInputChange, handleSubmit, isLoading, s
           />
           
           <div className="flex items-center justify-between px-3 pb-3 pt-1">
-            <div className="flex items-center gap-1">
-              <button type="button" className="p-2 text-jarvis-text-muted hover:text-jarvis-text transition-colors rounded-[8px] hover:bg-jarvis-bg-deepest" title="Attach File (Coming Soon)">
-                <Paperclip className="size-4" />
-              </button>
-              <button type="button" className="p-2 text-jarvis-text-muted hover:text-jarvis-text transition-colors rounded-[8px] hover:bg-jarvis-bg-deepest" title="Upload Image (Coming Soon)">
-                <ImageIcon className="size-4" />
-              </button>
-              <button type="button" className="p-2 text-jarvis-text-muted hover:text-jarvis-text transition-colors rounded-[8px] hover:bg-jarvis-bg-deepest" title="Voice Input (Coming Soon)">
-                <Mic className="size-4" />
-              </button>
-            </div>
+            <div className="flex items-center gap-1" />
 
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-jarvis-text-muted/50 font-mono hidden sm:inline-block mr-2 uppercase tracking-widest">

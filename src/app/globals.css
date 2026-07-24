@@ -16,6 +16,8 @@
   --color-jarvis-bg-deepest: #06090F;
   --color-jarvis-bg-deep: #081018;
   --color-jarvis-bg-base: #0D131C;
+  --color-jarvis-bg: #0D131C;
+  --color-jarvis-bg-panel: #101A25;
 
   /* Panel surfaces */
   --color-jarvis-panel: #101A25;
@@ -25,6 +27,8 @@
   --color-jarvis-primary: #34F5D0;
   --color-jarvis-secondary: #5CF5FF;
   --color-jarvis-accent: #8A5CFF;
+  --color-jarvis-glow-primary: #34F5D0;
+  --color-jarvis-glow-secondary: #5CF5FF;
 
   /* Semantic */
   --color-jarvis-success: #42FF98;
@@ -33,12 +37,14 @@
 
   /* Text */
   --color-jarvis-text: #F4F8FB;
+  --color-jarvis-text-primary: #F4F8FB;
   --color-jarvis-text-secondary: #9EB4C7;
   --color-jarvis-text-muted: #607488;
 
   /* Border */
   --color-jarvis-border: rgba(52, 245, 208, 0.12);
   --color-jarvis-border-strong: rgba(52, 245, 208, 0.25);
+  --color-jarvis-panel-border: rgba(52, 245, 208, 0.12);
 
   /* Fonts */
   --font-heading: 'Orbitron', sans-serif;
@@ -156,6 +162,18 @@ body {
 :focus-visible {
   outline: 2px solid var(--color-jarvis-primary);
   outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Scrollbar Hide Utility
+   -------------------------------------------------------------------------- */
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* --------------------------------------------------------------------------

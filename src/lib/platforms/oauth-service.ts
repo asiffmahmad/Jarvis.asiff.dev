@@ -8,13 +8,32 @@ export class OAuthService {
     // Initial Mock State
     this.accounts = [
       {
-        id: "acc_1",
+        id: "acc_li_1",
         platformId: "linkedin",
         accountName: "Tony Stark",
         handle: "@ironman",
+        avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=tony",
         status: "connected",
-        lastSync: new Date(Date.now() - 3600000), // 1 hour ago
-      }
+        lastSync: new Date(Date.now() - 3600000),
+      },
+      {
+        id: "acc_ig_1",
+        platformId: "instagram",
+        accountName: "Stark Industries",
+        handle: "@starkindustries",
+        avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=stark",
+        status: "connected",
+        lastSync: new Date(Date.now() - 7200000),
+      },
+      {
+        id: "acc_x_1",
+        platformId: "x",
+        accountName: "Tony Stark",
+        handle: "@tonystark",
+        avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=tonyx",
+        status: "connected",
+        lastSync: new Date(Date.now() - 1800000),
+      },
     ];
   }
 
@@ -41,8 +60,8 @@ export class OAuthService {
     const newAccount: ConnectedAccount = {
       id: `acc_${Date.now()}`,
       platformId,
-      accountName: `User ${Math.floor(Math.random() * 1000)}`,
-      handle: `@user_${Math.floor(Math.random() * 1000)}`,
+      accountName: platformId,
+      handle: `@${platformId}`,
       status: "connected",
       lastSync: new Date(),
     };

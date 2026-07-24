@@ -2,10 +2,6 @@ import type { CalendarEvent, CalendarTask, EventCategory } from "./types";
 
 type Listener = () => void;
 
-/**
- * Mock Calendar Service
- * Acts as the unified aggregator pulling from internal states and (in the future) external providers.
- */
 export class CalendarService {
   private static instance: CalendarService;
   
@@ -13,9 +9,7 @@ export class CalendarService {
   private tasks: CalendarTask[] = [];
   private listeners: Set<Listener> = new Set();
 
-  private constructor() {
-    this.seedMockData();
-  }
+  private constructor() {}
 
   public static getInstance(): CalendarService {
     if (!CalendarService.instance) {
@@ -41,8 +35,6 @@ export class CalendarService {
     return [...this.tasks];
   }
 
-  // --- Mock Methods ---
-  
   public addEvent(title: string, startDate: Date, endDate: Date, category: EventCategory, isAllDay = false) {
     const event: CalendarEvent = {
       id: `evt_${Date.now()}`,
@@ -77,30 +69,5 @@ export class CalendarService {
       task.isCompleted = !task.isCompleted;
       this.notify();
     }
-  }
-
-  private seedMockData() {
-    const now = new Date();
-    
-    // Seed events
-    const e1Start = new Date(now);
-    e1Start.setHours(10, 0, 0, 0);
-    const e1End = new Date(now);
-    e1End.setHours(11, 0, 0, 0);
-    this.addEvent("Team Sync", e1Start, e1End, "PERSONAL");
-
-    const e2Start = new Date(now);
-    e2Start.setHours(14, 0, 0, 0);
-    const e2End = new Date(now);
-    e2End.setHours(14, 30, 0, 0);
-    this.addEvent("Review Content Strategy", e2Start, e2End, "CONTENT");
-
-    const e3Start = new Date(now);
-    e3Start.setDate(e3Start.getDate() + 1);
-    this.addEvent("Q3 Planning Full Day", e3Start, e3Start, "PERSONAL", true);
-
-    // Seed tasks
-    this.addTask("Finalize Q3 Budget", new Date(now.getTime() + 86400000), "PERSONAL", "HIGH");
-    this.addTask("Run Web Scraper AI", new Date(now.getTime() + 3600000), "AI_JOB", "MEDIUM");
   }
 }

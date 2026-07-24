@@ -17,7 +17,6 @@ import {
   PenSquare,
   Library,
   Film,
-  Layout,
   Bot,
   CalendarDays,
   BarChart3,
@@ -52,7 +51,6 @@ function useCommands(): CommandEntry[] {
       { id: "nav-create", label: "Create Content", description: "Create a new post", icon: PenSquare, category: "navigation" as const, action: () => router.push("/create") },
       { id: "nav-library", label: "Content Library", description: "Browse content library", icon: Library, category: "navigation" as const, action: () => router.push("/library") },
       { id: "nav-media", label: "Media Studio", description: "Open media studio", icon: Film, category: "navigation" as const, action: () => router.push("/media") },
-      { id: "nav-templates", label: "Templates", description: "Browse templates", icon: Layout, category: "navigation" as const, action: () => router.push("/templates") },
       { id: "nav-agents", label: "AI Agents", description: "Manage AI agents", icon: Bot, category: "navigation" as const, action: () => router.push("/agents") },
       { id: "nav-calendar", label: "Calendar", description: "View content calendar", icon: CalendarDays, category: "navigation" as const, action: () => router.push("/calendar") },
       { id: "nav-analytics", label: "Analytics", description: "View analytics", icon: BarChart3, category: "navigation" as const, action: () => router.push("/analytics") },
@@ -148,20 +146,6 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
 
 
-  /* Global ⌘K / Ctrl+K shortcut */
-  useEffect(() => {
-    function handleGlobalKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        if (open) {
-          handleClose();
-        }
-      }
-    }
-
-    window.addEventListener("keydown", handleGlobalKey);
-    return () => window.removeEventListener("keydown", handleGlobalKey);
-  }, [open, handleClose]);
 
   const categoryLabels: Record<string, string> = {
     navigation: "Navigation",

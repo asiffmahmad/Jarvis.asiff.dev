@@ -1,3 +1,5 @@
+"use client";
+
 import { GitCommit, Clock, ArrowRight } from "lucide-react";
 import type { ContentVersion } from "@/lib/studio/types";
 

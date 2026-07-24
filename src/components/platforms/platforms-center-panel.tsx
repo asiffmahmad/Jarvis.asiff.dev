@@ -1,106 +1,120 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Link2, ShieldCheck, Loader2, AlertCircle } from "lucide-react";
+import {
+  Link2, AlertCircle, ExternalLink
+} from "lucide-react";
 import type { PlatformsState } from "@/lib/platforms/use-platforms";
-import { cn } from "@/lib/utils";
 
 interface CenterPanelProps {
   state: PlatformsState;
 }
 
+const connectionGuides: Record<string, { steps: string[]; docsUrl: string }> = {
+  linkedin: {
+    steps: [
+      "Go to LinkedIn Developer Portal (https://developer.linkedin.com)",
+      "Create a new app or select existing one",
+      "Add the 'w_member_social' product to your app",
+      "Copy your Client ID and Client Secret",
+      "Add LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET to your .env file",
+      "Set LINKEDIN_ACCESS_TOKEN after OAuth handshake"
+    ],
+    docsUrl: "https://learn.microsoft.com/en-us/linkedin/marketing/"
+  },
+  instagram: {
+    steps: [
+      "Go to Meta for Developers (https://developers.facebook.com)",
+      "Create a Facebook App with Instagram Graph API",
+      "Get a long-lived Page Access Token",
+      "Add INSTAGRAM_ACCESS_TOKEN to your .env file",
+      "Your Instagram Business or Creator account must be connected to the Facebook Page"
+    ],
+    docsUrl: "https://developers.facebook.com/docs/instagram-api/"
+  },
+  x: {
+    steps: [
+      "Go to X Developer Portal (https://developer.x.com)",
+      "Create a new Project and App",
+      "Generate API Key and API Secret (Consumer Keys)",
+      "Add X_API_KEY and X_API_SECRET to your .env file",
+      "Generate Access Token and Secret for your account"
+    ],
+    docsUrl: "https://developer.x.com/en/docs/twitter-api"
+  }
+};
+
+const platformInstructions: Record<string, string> = {
+  linkedin: "Share professional content, articles, and industry insights on LinkedIn. Connect your LinkedIn account to publish posts directly.",
+  instagram: "Share visual content, stories, and carousels on Instagram. Connect your Instagram Business or Creator account.",
+  x: "Share short-form content, threads, and engage with your audience on X (Twitter)."
+};
+
 export function PlatformsCenterPanel({ state }: CenterPanelProps) {
-  const { activeProvider, accounts, activeAccountId, setActiveAccountId, isConnecting, isSyncing } = state;
+  const { activeProvider } = state;
 
   if (!activeProvider) {
     return (
       <div className="flex-[2] flex flex-col items-center justify-center relative h-full bg-jarvis-bg-deepest/50 border-r border-jarvis-panel/50 p-8">
         <Link2 className="size-16 mb-4 text-jarvis-text-muted opacity-50" />
-        <h2 className="text-lg font-heading tracking-widest uppercase text-jarvis-text-muted opacity-50">No Provider Selected</h2>
+        <h2 className="text-lg font-heading tracking-widest uppercase text-jarvis-text-muted opacity-50">Select a Platform</h2>
+        <p className="text-xs text-jarvis-text-muted/50 mt-2 font-mono">Choose a platform from the sidebar to view connection details</p>
       </div>
     );
   }
 
-  const providerAccounts = accounts.filter(a => a.platformId === activeProvider.id);
-
   return (
-    <div className="flex-[2] flex flex-col relative h-full bg-jarvis-bg-deepest/50 border-r border-jarvis-panel/50 p-8">
+    <div className="flex-[2] flex flex-col relative h-full bg-jarvis-bg-deepest/50 border-r border-jarvis-panel/50 p-8 overflow-y-auto">
       
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-heading font-bold text-jarvis-text uppercase tracking-widest flex items-center gap-3">
-            <div className="w-8 h-8 rounded flex items-center justify-center font-bold text-sm text-white shadow-lg shadow-black/50" style={{ backgroundColor: activeProvider.brandColor }}>
-              {activeProvider.id.charAt(0).toUpperCase()}
-            </div>
-            {activeProvider.name} Integration
-          </h1>
-          <p className="text-xs text-jarvis-text-muted uppercase tracking-widest mt-2 font-mono">
-            {providerAccounts.length} Connected {providerAccounts.length === 1 ? 'Account' : 'Accounts'}
-          </p>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-heading font-bold text-jarvis-text uppercase tracking-widest flex items-center gap-3">
+          <div className="w-8 h-8 rounded flex items-center justify-center font-bold text-sm text-white shadow-lg" style={{ backgroundColor: activeProvider.brandColor }}>
+            {activeProvider.id.charAt(0).toUpperCase()}
+          </div>
+          {activeProvider.name}
+        </h1>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {providerAccounts.map(account => (
-          <motion.button
-            key={account.id}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            onClick={() => setActiveAccountId(account.id)}
-            className={cn(
-              "p-6 rounded-xl border flex flex-col items-center text-center transition-all duration-300 relative overflow-hidden",
-              activeAccountId === account.id 
-                ? "bg-jarvis-panel border-[#34F5D0] shadow-[0_0_30px_rgba(52,245,208,0.1)]"
-                : "bg-jarvis-panel/50 border-jarvis-panel-border/50 hover:border-jarvis-primary/50"
-            )}
-          >
-            {/* Status indicator glow */}
-            <div className={cn(
-              "absolute inset-0 bg-gradient-to-b from-transparent opacity-20",
-              account.status === 'connected' ? "to-[#34F5D0]" :
-              account.status === 'error' ? "to-[#FF4D4D]" :
-              "to-jarvis-primary"
-            )} />
-
-            <div className="w-16 h-16 rounded-full bg-jarvis-bg-deepest border-2 border-jarvis-panel-border mb-4 flex items-center justify-center relative z-10 shadow-lg">
-              <span className="text-xl font-bold" style={{ color: activeProvider.brandColor }}>
-                {account.accountName.charAt(0)}
-              </span>
-              
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-jarvis-bg border-2 border-jarvis-panel flex items-center justify-center">
-                {account.status === 'connected' && <ShieldCheck className="size-3 text-[#34F5D0]" />}
-                {account.status === 'error' && <AlertCircle className="size-3 text-[#FF4D4D]" />}
-              </div>
+      <div className="space-y-8">
+        <div className="bg-jarvis-panel/30 border border-jarvis-panel-border rounded-xl p-6">
+          <div className="flex items-start gap-4">
+            <AlertCircle className="size-5 text-jarvis-text-muted shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-bold text-jarvis-text">Not Connected</h3>
+              <p className="text-xs text-jarvis-text-muted mt-1 leading-relaxed">
+                {platformInstructions[activeProvider.id] || `${activeProvider.name} is not yet connected.`}
+              </p>
             </div>
-            
-            <h3 className="font-bold text-jarvis-text relative z-10">{account.accountName}</h3>
-            <p className="text-xs text-jarvis-text-muted relative z-10 font-mono mt-1">{account.handle}</p>
-            
-            {(isSyncing && activeAccountId === account.id) && (
-              <div className="absolute top-4 right-4">
-                <Loader2 className="size-4 animate-spin text-[#34F5D0]" />
-              </div>
-            )}
-          </motion.button>
-        ))}
-
-        {isConnecting && (
-          <div className="p-6 rounded-xl border border-jarvis-panel-border border-dashed flex flex-col items-center justify-center bg-jarvis-panel/20 opacity-50 animate-pulse">
-            <Loader2 className="size-8 animate-spin text-jarvis-text-muted mb-4" />
-            <span className="text-xs font-mono uppercase tracking-widest text-jarvis-text-muted">Awaiting OAuth...</span>
           </div>
+        </div>
+
+        <div>
+          <h3 className="text-sm font-heading font-bold text-jarvis-text uppercase tracking-widest mb-4">
+            How to Connect
+          </h3>
+          <div className="space-y-3">
+            {(connectionGuides[activeProvider.id]?.steps || []).map((step, i) => (
+              <div key={i} className="flex gap-3">
+                <div className="w-6 h-6 rounded-full bg-jarvis-primary/10 border border-jarvis-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-[10px] font-bold text-jarvis-primary">{i + 1}</span>
+                </div>
+                <p className="text-sm text-jarvis-text/80 leading-relaxed">{step}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {connectionGuides[activeProvider.id] && (
+          <a
+            href={connectionGuides[activeProvider.id].docsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-jarvis-primary/5 border border-jarvis-primary/20 text-xs font-bold text-jarvis-primary uppercase tracking-wider hover:bg-jarvis-primary/10 transition-colors"
+          >
+            <ExternalLink className="size-3" />
+            Developer Documentation
+          </a>
         )}
       </div>
-
-      {providerAccounts.length === 0 && !isConnecting && (
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <div className="text-center max-w-sm">
-            <p className="text-sm text-jarvis-text-muted mb-6">
-              Connect your {activeProvider.name} account to enable cross-platform publishing and analytics.
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

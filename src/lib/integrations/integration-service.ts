@@ -79,6 +79,6 @@ export class IntegrationService {
       conn.lastSync = new Date();
       conn.status = "connected";
     }
-    onLog({ id: Date.now().toString(), timestamp: new Date(), level: 'success', message: `Health check passed. Latency: ${Math.floor(Math.random() * 50 + 20)}ms` });
+    onLog({ id: Date.now().toString(), timestamp: new Date(), level: 'success', message: `Health check passed.` });
   }
 }

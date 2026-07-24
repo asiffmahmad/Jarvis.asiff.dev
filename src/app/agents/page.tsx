@@ -12,14 +12,10 @@ export default function AgentsPage() {
 
   return (
     <AppLayout edgeToEdge>
-      <div className="h-full w-full flex flex-col relative overflow-hidden bg-jarvis-bg-deepest">
-        
-        <div className="flex-1 flex h-full relative z-10 pb-16">
-          <AgentsSidebarLeft state={agentsState} />
-          <AgentsCenterPanel state={agentsState} />
-          <AgentsRightPanel state={agentsState} />
-        </div>
-        
+      <div className="flex h-full w-full bg-jarvis-bg overflow-hidden text-jarvis-text relative">
+        <AgentsSidebarLeft state={agentsState} />
+        <AgentsCenterPanel state={agentsState} />
+        <AgentsRightPanel state={agentsState} />
         <AgentsToolbar state={agentsState} />
       </div>
     </AppLayout>

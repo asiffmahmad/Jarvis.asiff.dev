@@ -74,6 +74,9 @@ export const serverEnv = {
   get groqApiKey() {
     return optional("GROQ_API_KEY");
   },
+  get openrouterApiKey() {
+    return optional("OPENROUTER_API_KEY");
+  },
 
   /* Social Media */
   get instagramAccessToken() {

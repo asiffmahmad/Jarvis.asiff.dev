@@ -1,16 +1,19 @@
-import { Folder, PenTool, Image as ImageIcon, MessageSquare, History, FileText, Settings, Layers } from "lucide-react";
+"use client";
+
+import { Folder, PenTool, Image as ImageIcon, MessageSquare, History, Settings, Layers } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 export function StudioSidebar() {
+  const router = useRouter();
   const navItems = [
-    { icon: PenTool, label: "Content Types", active: true },
-    { icon: Layers, label: "Brand Kit" },
-    { icon: FileText, label: "Templates" },
-    { icon: MessageSquare, label: "Prompt Library" },
-    { icon: ImageIcon, label: "Media Assets" },
-    { icon: History, label: "Recent Drafts" },
-    { icon: Settings, label: "Settings" },
+    { icon: PenTool, label: "Content Types", active: true, path: "/studio" },
+    { icon: Layers, label: "Brand Kit", active: false, path: "/studio/brand" },
+    { icon: MessageSquare, label: "Prompt Library", active: false, path: "/prompts" },
+    { icon: ImageIcon, label: "Media Assets", active: false, path: "/studio/media" },
+    { icon: History, label: "Recent Drafts", active: false, path: "/studio/history" },
+    { icon: Settings, label: "Settings", active: false, path: "/settings" },
   ];
 
   return (
@@ -29,6 +32,7 @@ export function StudioSidebar() {
           {navItems.map((item, index) => (
             <button
               key={index}
+              onClick={() => router.push(item.path)}
               className={cn(
                 "w-full flex items-center p-3 rounded-xl transition-all duration-300 relative group/btn",
                 item.active 

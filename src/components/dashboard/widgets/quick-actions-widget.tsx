@@ -1,20 +1,22 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Zap, PenSquare, Mail, Globe, Image as ImageIcon, MessageSquare, Settings2, BarChart2 } from "lucide-react";
 import { DashboardCard } from "../shared/dashboard-card";
 import { cn } from "@/lib/utils";
 
 const actions = [
-  { icon: PenSquare, label: "Create Content", color: "text-jarvis-primary", bg: "bg-jarvis-primary/10", border: "hover:border-jarvis-primary/50" },
-  { icon: Mail, label: "Open Gmail", color: "text-jarvis-secondary", bg: "bg-jarvis-secondary/10", border: "hover:border-jarvis-secondary/50" },
-  { icon: Globe, label: "Research Topic", color: "text-jarvis-accent", bg: "bg-jarvis-accent/10", border: "hover:border-jarvis-accent/50" },
-  { icon: ImageIcon, label: "Generate Carousel", color: "text-jarvis-success", bg: "bg-jarvis-success/10", border: "hover:border-jarvis-success/50" },
-  { icon: MessageSquare, label: "Generate Caption", color: "text-jarvis-primary", bg: "bg-jarvis-primary/10", border: "hover:border-jarvis-primary/50" },
-  { icon: Settings2, label: "New Automation", color: "text-jarvis-warning", bg: "bg-jarvis-warning/10", border: "hover:border-jarvis-warning/50" },
-  { icon: BarChart2, label: "Open Analytics", color: "text-jarvis-secondary", bg: "bg-jarvis-secondary/10", border: "hover:border-jarvis-secondary/50" },
+  { icon: PenSquare, label: "Create Content", color: "text-jarvis-primary", bg: "bg-jarvis-primary/10", border: "hover:border-jarvis-primary/50", href: "/create" },
+  { icon: Mail, label: "Open Gmail", color: "text-jarvis-secondary", bg: "bg-jarvis-secondary/10", border: "hover:border-jarvis-secondary/50", href: "/integrations" },
+  { icon: Globe, label: "Research Topic", color: "text-jarvis-accent", bg: "bg-jarvis-accent/10", border: "hover:border-jarvis-accent/50", href: "/research" },
+  { icon: ImageIcon, label: "Generate Carousel", color: "text-jarvis-success", bg: "bg-jarvis-success/10", border: "hover:border-jarvis-success/50", href: "/studio" },
+  { icon: MessageSquare, label: "Generate Caption", color: "text-jarvis-primary", bg: "bg-jarvis-primary/10", border: "hover:border-jarvis-primary/50", href: "/agents" },
+  { icon: Settings2, label: "New Automation", color: "text-jarvis-warning", bg: "bg-jarvis-warning/10", border: "hover:border-jarvis-warning/50", href: "/automation" },
+  { icon: BarChart2, label: "Open Analytics", color: "text-jarvis-secondary", bg: "bg-jarvis-secondary/10", border: "hover:border-jarvis-secondary/50", href: "/analytics" },
 ];
 
 export function QuickActionsWidget() {
+  const router = useRouter();
   return (
     <DashboardCard
       title="Quick Actions"
@@ -28,6 +30,7 @@ export function QuickActionsWidget() {
           return (
             <button
               key={i}
+              onClick={() => router.push(action.href)}
               className={cn(
                 "group flex flex-col items-center justify-center gap-3 p-4 rounded-[12px]",
                 "bg-jarvis-panel/30 border border-jarvis-border transition-all duration-300",

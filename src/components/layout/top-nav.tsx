@@ -8,6 +8,7 @@
  */
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -36,6 +37,7 @@ interface TopNavProps {
 export function TopNav({ onOpenCommandPalette }: TopNavProps) {
   const { sidebarCollapsed } = useTheme();
   const { logout, user } = useAuth();
+  const router = useRouter();
   const [notifications] = useState(3);
 
   return (
@@ -87,17 +89,27 @@ export function TopNav({ onOpenCommandPalette }: TopNavProps) {
         {/* Network Status */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative"
+              onClick={() => router.push("/status")}
+            >
               <Wifi className="size-4 text-jarvis-success" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Connected</TooltipContent>
+          <TooltipContent>Connected — Click for system status</TooltipContent>
         </Tooltip>
 
         {/* Notifications */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative"
+              onClick={() => router.push("/settings")}
+            >
               <Bell className="size-4" />
               {notifications > 0 && (
                 <Badge
@@ -115,7 +127,7 @@ export function TopNav({ onOpenCommandPalette }: TopNavProps) {
         {/* User Profile */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <button className="cursor-pointer">
+            <button className="cursor-pointer" onClick={() => router.push("/profile")}>
               <Avatar className="size-8">
                 <AvatarFallback className="text-xs bg-jarvis-accent/15 text-jarvis-accent uppercase">
                   {user?.username?.substring(0, 2) || "JA"}

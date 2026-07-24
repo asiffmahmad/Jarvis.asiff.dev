@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { RefreshCw, Download, Share2 } from "lucide-react";
+import { Download, Share2 } from "lucide-react";
 import type { ResearchState } from "@/lib/research/use-research";
 import { cn } from "@/lib/utils";
 
@@ -18,31 +18,22 @@ export function ResearchToolbar({ state }: ToolbarProps) {
       animate={{ y: 0 }}
       className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-jarvis-panel border border-jarvis-panel-border shadow-[0_0_40px_rgba(52,245,208,0.1)] rounded-full px-4 py-2 flex items-center gap-2 z-50 glass-strong"
     >
-      <button 
-        className="flex items-center gap-2 px-4 py-2 bg-jarvis-primary/10 hover:bg-jarvis-primary text-jarvis-primary hover:text-jarvis-bg-deepest rounded-full transition-all text-xs font-bold uppercase tracking-wider border border-jarvis-primary/30"
-      >
-        <RefreshCw className="size-3" /> Refresh Feeds
-      </button>
-
-      <div className="w-px h-6 bg-jarvis-panel-border/50 mx-2" />
-      
-      <ToolButton icon={Download} label="Export JSON" disabled={!activeArticle} />
-      <ToolButton icon={Share2} label="Share" disabled={!activeArticle} />
-
+      <ToolButton icon={Download} label="Export JSON" onClick={() => { if (!activeArticle) return; const blob = new Blob([JSON.stringify(activeArticle, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${activeArticle.title.replace(/\s+/g, "_")}.json`; a.click(); URL.revokeObjectURL(url); }} disabled={!activeArticle} />
+      <ToolButton icon={Share2} label="Share" onClick={() => { if (!activeArticle) return; navigator.clipboard.writeText(activeArticle.url || window.location.href); }} disabled={!activeArticle} />
     </motion.div>
   );
 }
 
-function ToolButton({ 
-  icon: Icon, 
-  label, 
-  onClick, 
-  disabled, 
-}: { 
-  icon: React.ElementType; 
-  label: string; 
-  onClick?: () => void; 
-  disabled?: boolean; 
+function ToolButton({
+  icon: Icon,
+  label,
+  onClick,
+  disabled,
+}: {
+  icon: React.ElementType;
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button

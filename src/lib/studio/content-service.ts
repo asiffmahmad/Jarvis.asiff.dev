@@ -52,14 +52,13 @@ export class ContentService {
       issues.push(`Exceeds maximum character limit (${constraints.maxCharacters})`);
     }
 
-    // Naive mock scores
     return {
       characterCount,
       wordCount,
       readingTimeMinutes,
-      seoScore: Math.min(100, Math.floor(Math.random() * 20 + 80)),
-      aiQualityScore: Math.min(100, Math.floor(Math.random() * 20 + 80)),
-      readabilityScore: Math.min(100, Math.floor(Math.random() * 20 + 80)),
+      seoScore: 0,
+      aiQualityScore: 0,
+      readabilityScore: 0,
       platformCompatibility: characterCount <= constraints.maxCharacters,
       issues,
     };

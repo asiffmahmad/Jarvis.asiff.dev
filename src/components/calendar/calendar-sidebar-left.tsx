@@ -44,15 +44,16 @@ export function CalendarSidebarLeft({ state }: SidebarProps) {
           <div className="grid grid-cols-7 gap-1 text-center text-xs">
             {/* Mock days */}
             {Array.from({length: 31}).map((_, i) => (
-              <div 
-                key={i} 
+              <button
+                key={i}
+                onClick={() => state.setCurrentDate(new Date(new Date().getFullYear(), new Date().getMonth(), i + 1))}
                 className={cn(
-                  "p-1 rounded cursor-pointer hover:bg-jarvis-primary/20",
+                  "p-1 rounded cursor-pointer hover:bg-jarvis-primary/20 text-center",
                   i + 1 === new Date().getDate() ? "bg-jarvis-primary text-jarvis-bg-deepest font-bold" : "text-jarvis-text"
                 )}
               >
                 {i + 1}
-              </div>
+              </button>
             ))}
           </div>
         </div>

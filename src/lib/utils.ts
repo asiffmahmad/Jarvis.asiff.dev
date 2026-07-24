@@ -89,3 +89,18 @@ export function truncate(str: string, maxLength: number): string {
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/**
+ * Safely parse JSON, handling unescaped control characters that Groq sometimes returns.
+ */
+export function safeJsonParse<T>(text: string): T {
+  let cleaned = text;
+  // Strip markdown code fences if present
+  const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) {
+    cleaned = fenceMatch[1].trim();
+  }
+  // Strip ALL control characters (including newlines/carriage returns) that break JSON parsing
+  cleaned = cleaned.replace(/[\x00-\x1F]/g, "");
+  return JSON.parse(cleaned);
+}

@@ -1,3 +1,5 @@
+"use client";
+
 import { Camera, Briefcase, MessageSquare, Video, Users } from "lucide-react";
 import type { Platform } from "@/lib/studio/types";
 import { cn } from "@/lib/utils";
