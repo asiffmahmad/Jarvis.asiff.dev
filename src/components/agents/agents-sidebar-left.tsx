@@ -9,6 +9,7 @@ import type { AgentCategory } from "@/lib/agents/types";
 
 interface SidebarProps {
   state: AgentsState;
+  mode: "agent" | "post" | "pipeline";
 }
 
 const getIconForCategory = (category: AgentCategory) => {
@@ -25,7 +26,7 @@ const getIconForCategory = (category: AgentCategory) => {
   }
 };
 
-export function AgentsSidebarLeft({ state }: SidebarProps) {
+export function AgentsSidebarLeft({ state, mode }: SidebarProps) {
   const { agents, activeAgentId, setActiveAgentId } = state;
 
   const enabledAgents = agents.filter(a => a.isEnabled);
@@ -46,36 +47,44 @@ export function AgentsSidebarLeft({ state }: SidebarProps) {
       </div>
 
       <ScrollArea className="flex-1 p-2">
-        
-        <div className="space-y-1 mb-6 mt-2">
-          <h3 className="px-2 text-[10px] font-bold text-jarvis-text-muted uppercase tracking-widest mb-2 flex items-center gap-2">
-            <Play className="size-3 text-[#34F5D0]" /> Active Roster
-          </h3>
-          {enabledAgents.map((agent) => {
-            const isSelected = activeAgentId === agent.id;
-            const Icon = getIconForCategory(agent.category);
-            
-            return (
-              <button
-                key={agent.id}
-                onClick={() => setActiveAgentId(agent.id)}
-                className={cn(
-                  "w-full flex flex-col gap-1 p-3 rounded-lg transition-all duration-300 group text-left",
-                  isSelected
-                    ? "bg-jarvis-primary/10 border border-jarvis-primary/30 shadow-[inset_0_0_10px_rgba(52,245,208,0.1)]"
-                    : "hover:bg-jarvis-panel/50 border border-transparent"
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <Icon className={cn("size-4", isSelected ? "text-jarvis-primary" : "text-jarvis-text-muted group-hover:text-jarvis-text")} />
-                  <span className={cn("text-sm font-bold", isSelected ? "text-jarvis-primary" : "text-jarvis-text")}>{agent.name}</span>
-                </div>
-                <p className="text-[10px] text-jarvis-text-muted leading-tight line-clamp-2 pl-6">{agent.description}</p>
-              </button>
-            );
-          })}
-        </div>
-
+        {mode === "pipeline" ? (
+          <div className="h-full flex flex-col items-center justify-center p-6 text-center opacity-50 py-16">
+            <Bot className="size-10 text-jarvis-text-muted mb-2 animate-pulse" />
+            <span className="text-[10px] font-bold text-jarvis-text-muted uppercase tracking-widest">Roster Suspended</span>
+            <p className="text-[9px] text-jarvis-text-muted/70 mt-1 leading-relaxed">
+              Active roster selection is disabled during Multi-Agent Pipeline operations.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-1 mb-6 mt-2">
+            <h3 className="px-2 text-[10px] font-bold text-jarvis-text-muted uppercase tracking-widest mb-2 flex items-center gap-2">
+              <Play className="size-3 text-[#34F5D0]" /> Active Roster
+            </h3>
+            {enabledAgents.map((agent) => {
+              const isSelected = activeAgentId === agent.id;
+              const Icon = getIconForCategory(agent.category);
+              
+              return (
+                <button
+                  key={agent.id}
+                  onClick={() => setActiveAgentId(agent.id)}
+                  className={cn(
+                    "w-full flex flex-col gap-1 p-3 rounded-lg transition-all duration-300 group text-left",
+                    isSelected
+                      ? "bg-jarvis-primary/10 border border-jarvis-primary/30 shadow-[inset_0_0_10px_rgba(52,245,208,0.1)]"
+                      : "hover:bg-jarvis-panel/50 border border-transparent"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <Icon className={cn("size-4", isSelected ? "text-jarvis-primary" : "text-jarvis-text-muted group-hover:text-jarvis-text")} />
+                    <span className={cn("text-sm font-bold", isSelected ? "text-jarvis-primary" : "text-jarvis-text")}>{agent.name}</span>
+                  </div>
+                  <p className="text-[10px] text-jarvis-text-muted leading-tight line-clamp-2 pl-6">{agent.description}</p>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </ScrollArea>
     </motion.aside>
   );

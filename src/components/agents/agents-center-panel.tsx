@@ -16,6 +16,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface CenterPanelProps {
   state: AgentsState;
+  mode: "agent" | "post" | "pipeline";
+  setMode: (mode: "agent" | "post" | "pipeline") => void;
 }
 
 interface ParsedPost {
@@ -69,12 +71,9 @@ function tryParsePost(result: string): ParsedPost | null {
   return null;
 }
 
-export function AgentsCenterPanel({ state }: CenterPanelProps) {
+export function AgentsCenterPanel({ state, mode, setMode }: CenterPanelProps) {
   const router = useRouter();
   const { activeAgent, executionState } = state;
-  const [mode, setMode] = useState<"agent" | "post" | "pipeline">(() => {
-    return getResearchContext() ? "pipeline" : "agent";
-  });
   const outputRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const hasNavigatedRef = useRef(false);

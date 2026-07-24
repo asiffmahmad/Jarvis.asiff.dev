@@ -7,9 +7,12 @@ import { cn } from "@/lib/utils";
 
 interface ToolbarProps {
   state: AgentsState;
+  mode: "agent" | "post" | "pipeline";
 }
 
-export function AgentsToolbar({ state }: ToolbarProps) {
+export function AgentsToolbar({ state, mode }: ToolbarProps) {
+  if (mode === "pipeline") return null;
+
   const { activeAgent, executionState, executeAgent, stopExecution, resetExecution, prompt, setPrompt } = state;
 
   const isRunning = executionState.status === "running";
