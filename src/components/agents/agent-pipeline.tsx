@@ -367,6 +367,44 @@ If the post passes audits, write a validation summary approving the post.`,
     runPipelineFromStep(0, topic.trim(), false);
   };
 
+  // Auto-navigate to /create when a post is generated successfully
+  useEffect(() => {
+    if (post && !isRunning && !hasNavigatedRef.current) {
+      hasNavigatedRef.current = true;
+      const timer = setTimeout(async () => {
+        try {
+          const controller = new AbortController();
+          const id = setTimeout(() => controller.abort(), 2000); // 2-second timeout for DB save
+
+          await fetch("/api/publish/draft", {
+            method: "POST",
+            signal: controller.signal,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              post: {
+                title: post.title,
+                caption: post.caption,
+                hashtags: post.hashtags,
+                mediaIdeas: post.mediaIdeas,
+                callToAction: post.callToAction,
+                platform: post.platform,
+                bestPostingTime: post.bestPostingTime,
+                topic: topic.trim(),
+                tone: "professional",
+                contentType: "post",
+              }
+            }),
+          });
+          clearTimeout(id);
+        } catch (err) {
+          console.error("Failed to save draft to MySQL:", err);
+        }
+        router.push("/create");
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [post, isRunning, router, topic]);
+
   const handleStop = () => {
     if (abortRef.current) {
       abortRef.current.abort();
