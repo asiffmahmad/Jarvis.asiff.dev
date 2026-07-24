@@ -18,9 +18,9 @@ export default function AgentsPage() {
   return (
     <AppLayout edgeToEdge>
       <div className="flex h-full w-full bg-jarvis-bg overflow-hidden text-jarvis-text relative">
-        <AgentsSidebarLeft state={agentsState} mode={mode} />
+        {mode !== "pipeline" && <AgentsSidebarLeft state={agentsState} mode={mode} />}
         <AgentsCenterPanel state={agentsState} mode={mode} setMode={setMode} />
-        <AgentsRightPanel state={agentsState} />
+        {mode !== "pipeline" && <AgentsRightPanel state={agentsState} />}
         <AgentsToolbar state={agentsState} mode={mode} />
       </div>
     </AppLayout>

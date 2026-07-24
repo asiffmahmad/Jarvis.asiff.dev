@@ -133,7 +133,7 @@ export function AgentsCenterPanel({ state, mode, setMode }: CenterPanelProps) {
   };
 
   return (
-    <div className="flex-[2] flex flex-col relative h-full bg-jarvis-bg-deepest/50 border-r border-jarvis-panel/50">
+    <div className={cn("flex flex-col relative h-full bg-jarvis-bg-deepest/50 border-r border-jarvis-panel/50", mode === "pipeline" ? "flex-1 w-full" : "flex-[2]")}>
       {/* Mode Toggle */}
       <div className="h-14 border-b border-jarvis-panel/30 flex items-center px-6 gap-4 shrink-0">
         <button
