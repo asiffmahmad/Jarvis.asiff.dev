@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -177,10 +177,22 @@ function PlatformPreview({ post, account }: { post: PostData; account: Connected
 
 export default function CreatePage() {
   const router = useRouter();
-  const [post, setPost] = useState<PostData | null>(null);
+  interface DraftItem {
+    id: string;
+    status: string;
+    title: string;
+    updatedAt: string;
+    post: PostData | null;
+    pendingGen: PendingGeneration | null;
+  }
+  const [drafts, setDrafts] = useState<DraftItem[]>([]);
+  const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
-  const [pendingGen, setPendingGen] = useState<PendingGeneration | null>(null);
+
+  const activeDraft = useMemo(() => drafts.find(d => d.id === selectedDraftId) || null, [drafts, selectedDraftId]);
+  const post = activeDraft?.post || null;
+  const pendingGen = activeDraft?.pendingGen || null;
   const abortRef = useRef<AbortController | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [showAccountPicker, setShowAccountPicker] = useState(false);
@@ -210,55 +222,97 @@ export default function CreatePage() {
     return allAccounts.find(a => a.id === selectedAccountId) || null;
   }, [allAccounts, selectedAccountId, accountsForPlatform]);
 
-  const saveDraftToDb = async (draftData: PostData) => {
+  const updateActivePost = (updatedPost: PostData) => {
+    setDrafts(prev => prev.map(d => d.id === selectedDraftId ? { ...d, post: updatedPost } : d));
+  };
+
+  const refreshDrafts = useCallback(async (selectId?: string) => {
+    try {
+      const res = await fetch("/api/publish/draft");
+      if (res.ok) {
+        const result = await res.json();
+        const items = result.drafts || [];
+        setDrafts(items);
+        if (items.length > 0) {
+          const currentSelectId = selectId || selectedDraftId;
+          const nextSelect = items.some((d: any) => d.id === currentSelectId)
+            ? currentSelectId
+            : items[0].id;
+          
+          setSelectedDraftId(nextSelect);
+          const active = items.find((d: any) => d.id === nextSelect);
+          if (active && active.post) {
+            setEditCaption(active.post.caption);
+          }
+        } else {
+          setSelectedDraftId(null);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch drafts:", err);
+    }
+  }, [selectedDraftId]);
+
+  const saveDraftToDb = async (draftData: PostData, id?: string) => {
+    const targetId = id || selectedDraftId || undefined;
     try {
       await fetch("/api/publish/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ post: draftData }),
+        body: JSON.stringify({ post: draftData, contentId: targetId }),
       });
+      const res = await fetch("/api/publish/draft");
+      if (res.ok) {
+        const result = await res.json();
+        setDrafts(result.drafts || []);
+      }
     } catch (err) {
       console.error("Failed to save draft to MySQL:", err);
     }
   };
 
-  const deleteDraftFromDb = async () => {
+  const deleteDraftFromDb = async (id?: string) => {
+    const targetId = id || selectedDraftId;
+    if (!targetId) return;
     try {
-      await fetch("/api/publish/draft", {
+      await fetch(`/api/publish/draft?id=${targetId}`, {
         method: "DELETE",
       });
+      // Filter out the deleted draft locally first
+      setDrafts(prev => prev.filter(d => d.id !== targetId));
+      // Re-evaluate selected draft
+      const remaining = drafts.filter(d => d.id !== targetId);
+      if (remaining.length > 0) {
+        setSelectedDraftId(remaining[0].id);
+        if (remaining[0].post) {
+          setEditCaption(remaining[0].post.caption);
+        }
+      } else {
+        setSelectedDraftId(null);
+      }
     } catch (err) {
       console.error("Failed to delete draft from MySQL:", err);
     }
   };
 
   useEffect(() => {
-    // Fetch active draft or pending generation configuration from MySQL
-    (async () => {
-      try {
-        const res = await fetch("/api/publish/draft");
-        if (res.ok) {
-          const result = await res.json();
-          if (result.pendingGen) {
-            setPendingGen(result.pendingGen);
-          } else if (result.draft) {
-            setPost(result.draft);
-            setEditCaption(result.draft.caption);
-            const matching = allAccounts.filter(a => a.platformId === result.draft.platform);
-            if (matching.length > 0) {
-              setSelectedAccountId(matching[0].id);
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch draft from MySQL:", err);
-      }
-    })();
+    refreshDrafts();
   }, [allAccounts]);
+
+  useEffect(() => {
+    if (post?.platform) {
+      const matching = allAccounts.filter(a => a.platformId === post.platform);
+      if (matching.length > 0) {
+        setSelectedAccountId(matching[0].id);
+      } else {
+        setSelectedAccountId(null);
+      }
+    }
+  }, [post?.platform, allAccounts]);
 
   // Kick off async generation when pendingGen is set
   useEffect(() => {
-    if (!pendingGen) return;
+    if (!pendingGen || !selectedDraftId) return;
     setGenerating(true);
     setGenerationError(null);
     abortRef.current = new AbortController();
@@ -290,16 +344,16 @@ export default function CreatePage() {
           tone: pendingGen.tone,
           contentType: pendingGen.contentType,
         };
-        setPost(postData);
-        setEditCaption(postData.caption);
-        setGenerating(false);
-        setPendingGen(null);
-        await saveDraftToDb(postData);
 
-        const matching = allAccounts.filter(a => a.platformId === postData.platform);
-        if (matching.length > 0) {
-          setSelectedAccountId(matching[0].id);
-        }
+        // Save the newly generated post to MySQL draft database!
+        await fetch("/api/publish/draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ post: postData, contentId: selectedDraftId }),
+        });
+
+        setGenerating(false);
+        await refreshDrafts(selectedDraftId);
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
           setGenerationError((err as Error).message);
@@ -311,14 +365,14 @@ export default function CreatePage() {
     return () => {
       abortRef.current?.abort();
     };
-  }, [pendingGen, allAccounts]);
+  }, [pendingGen, selectedDraftId]);
 
   const cfg = post ? platformConfig[post.platform] || platformConfig.linkedin : null;
 
   const handlePlatformChange = (newPlatform: string) => {
     if (!post) return;
     const updated = { ...post, platform: newPlatform };
-    setPost(updated);
+    updateActivePost(updated);
     saveDraftToDb(updated);
     const matching = allAccounts.filter(a => a.platformId === newPlatform);
     setSelectedAccountId(matching.length > 0 ? matching[0].id : null);
@@ -342,7 +396,6 @@ export default function CreatePage() {
       setStatusMsg("Posted! It will appear on your connected account shortly.");
       clearGeneratedPost();
       await deleteDraftFromDb();
-      setPost(null);
       setTimeout(() => router.push("/scheduler"), 2000);
     } catch {
       setStatusMsg("Post failed. Check your platform connection.");
@@ -368,7 +421,6 @@ export default function CreatePage() {
       setShowSchedule(false);
       clearGeneratedPost();
       await deleteDraftFromDb();
-      setPost(null);
       setTimeout(() => router.push("/scheduler"), 2000);
     } catch {
       setStatusMsg("Scheduling failed.");
@@ -426,7 +478,7 @@ export default function CreatePage() {
         tone: post.tone || "professional",
         contentType: post.contentType || "post",
       };
-      setPost(postData);
+      updateActivePost(postData);
       setEditCaption(postData.caption);
       await saveDraftToDb(postData);
       setGenerating(false);
@@ -586,9 +638,47 @@ export default function CreatePage() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Drafts Sidebar */}
+            <div className="lg:col-span-3 space-y-3">
+              <div className="flex items-center gap-2">
+                <FileText className="size-4 text-jarvis-text-muted" />
+                <h2 className="text-xs font-heading font-bold text-jarvis-text uppercase tracking-widest">Active Drafts</h2>
+                <span className="text-[10px] bg-jarvis-primary/20 text-jarvis-primary px-1.5 py-0.5 rounded font-bold font-mono">
+                  {drafts.length}
+                </span>
+              </div>
+              <div className="glass-panel p-2 space-y-1 max-h-[600px] overflow-y-auto">
+                {drafts.map(d => (
+                  <button
+                    key={d.id}
+                    onClick={() => {
+                      setSelectedDraftId(d.id);
+                      if (d.post) setEditCaption(d.post.caption);
+                    }}
+                    className={cn(
+                      "w-full text-left p-3 rounded-lg border transition-all flex flex-col gap-1",
+                      selectedDraftId === d.id
+                        ? "bg-jarvis-primary/10 border-jarvis-primary/30 text-jarvis-primary"
+                        : "bg-transparent border-transparent text-jarvis-text-muted hover:bg-jarvis-panel"
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-xs truncate flex-1">{d.title}</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded uppercase font-mono bg-jarvis-panel border border-jarvis-panel-border/30">
+                        {d.status === "pending_generation" ? "loading" : (d.post?.platform || "post")}
+                      </span>
+                    </div>
+                    <span className="text-[9px] text-jarvis-text-muted/60 font-mono">
+                      {new Date(d.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Platform Preview */}
-            <div className="space-y-3">
+            <div className="lg:col-span-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Eye className="size-4 text-jarvis-text-muted" />
                 <h2 className="text-xs font-heading font-bold text-jarvis-text uppercase tracking-widest">Platform Preview</h2>
@@ -602,7 +692,7 @@ export default function CreatePage() {
             </div>
 
             {/* Post Details & Actions */}
-            <div className="space-y-4">
+            <div className="lg:col-span-5 space-y-4">
               <div className="glass-panel p-5 space-y-4">
                 {/* Platform selector */}
                 <div>
@@ -698,7 +788,7 @@ export default function CreatePage() {
                       <button
                         onClick={() => {
                           const updated = { ...post, caption: editCaption };
-                          setPost(updated);
+                          updateActivePost(updated);
                           saveDraftToDb(updated);
                           setEditing(false);
                         }}
@@ -779,10 +869,9 @@ export default function CreatePage() {
                   <Repeat className="size-4" /> Revise
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     clearGeneratedPost();
-                    setPost(null);
-                    router.push("/agents");
+                    await deleteDraftFromDb();
                   }}
                   className="flex items-center gap-2 px-4 py-3 rounded-xl transition-all text-xs font-bold uppercase tracking-wider border border-jarvis-panel-border text-jarvis-text-muted hover:text-jarvis-text"
                 >

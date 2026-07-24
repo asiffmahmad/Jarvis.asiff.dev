@@ -23,8 +23,8 @@ export async function GET() {
   try {
     const user = await getOrCreateUser();
     
-    // Find the latest content of type 'post' and status 'draft' or 'pending_generation'
-    const latestContent = await prisma.content.findFirst({
+    // Find all content items of status 'draft' or 'pending_generation'
+    const contentItems = await prisma.content.findMany({
       where: {
         userId: user.id,
         status: { in: ["draft", "pending_generation"] },
@@ -42,30 +42,25 @@ export async function GET() {
       },
     });
 
-    if (!latestContent || latestContent.drafts.length === 0) {
-      return NextResponse.json({ draft: null, pendingGen: null });
-    }
-
-    const latestDraft = latestContent.drafts[0];
-    const parsedData = JSON.parse(latestDraft.body);
-
-    if (latestContent.status === "pending_generation") {
-      return NextResponse.json({ 
-        draft: null, 
-        pendingGen: parsedData as PendingGeneration,
-        contentId: latestContent.id 
-      });
-    }
-    
-    return NextResponse.json({ 
-      draft: parsedData as PostData, 
-      pendingGen: null,
-      contentId: latestContent.id 
+    const drafts = contentItems.map(item => {
+      const latestDraft = item.drafts[0];
+      const parsedData = latestDraft ? JSON.parse(latestDraft.body) : null;
+      
+      return {
+        id: item.id,
+        status: item.status,
+        title: item.title,
+        updatedAt: item.updatedAt.toISOString(),
+        post: item.status === "draft" ? parsedData as PostData : null,
+        pendingGen: item.status === "pending_generation" ? parsedData as PendingGeneration : null,
+      };
     });
+    
+    return NextResponse.json({ drafts });
   } catch (error) {
     console.error("[DRAFT GET API] Error:", error);
     return NextResponse.json(
-      { error: (error as Error).message || "Failed to fetch draft" },
+      { error: (error as Error).message || "Failed to fetch drafts" },
       { status: 500 }
     );
   }
@@ -75,7 +70,7 @@ export async function POST(req: Request) {
   try {
     const user = await getOrCreateUser();
     const body = await req.json();
-    const { post, pendingGen } = body;
+    const { post, pendingGen, contentId } = body;
 
     if (!post && !pendingGen) {
       return NextResponse.json({ error: "post or pendingGen data is required" }, { status: 400 });
@@ -86,32 +81,58 @@ export async function POST(req: Request) {
     const status = isPending ? "pending_generation" : "draft";
     const payload = isPending ? pendingGen : post;
 
-    // Delete any existing draft/pending_generation contents to ensure only 1 active draft session
-    await prisma.content.deleteMany({
-      where: {
-        userId: user.id,
-        status: { in: ["draft", "pending_generation"] },
-      },
-    });
+    let content;
 
-    // Create a clean new Content draft in MySQL
-    const content = await prisma.content.create({
-      data: {
-        userId: user.id,
-        title: title || "Untitled Draft",
-        type: "post",
-        status: status,
-        drafts: {
-          create: {
-            body: JSON.stringify(payload),
-            version: 1,
+    if (contentId) {
+      // Update existing content
+      content = await prisma.content.update({
+        where: { id: contentId },
+        data: {
+          title: title || "Untitled Draft",
+          status: status,
+          updatedAt: new Date(),
+        },
+        include: {
+          drafts: {
+            orderBy: {
+              version: "desc",
+            },
+            take: 1,
           },
         },
-      },
-      include: {
-        drafts: true,
-      },
-    });
+      });
+
+      const latestDraft = content.drafts[0];
+      const nextVersion = latestDraft ? latestDraft.version + 1 : 1;
+
+      // Create a new draft version
+      await prisma.contentDraft.create({
+        data: {
+          contentId: content.id,
+          body: JSON.stringify(payload),
+          version: nextVersion,
+        },
+      });
+    } else {
+      // Create new Content draft (allowing multiple active drafts)
+      content = await prisma.content.create({
+        data: {
+          userId: user.id,
+          title: title || "Untitled Draft",
+          type: "post",
+          status: status,
+          drafts: {
+            create: {
+              body: JSON.stringify(payload),
+              version: 1,
+            },
+          },
+        },
+        include: {
+          drafts: true,
+        },
+      });
+    }
 
     return NextResponse.json({ success: true, contentId: content.id });
   } catch (error) {
@@ -123,16 +144,17 @@ export async function POST(req: Request) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(req: Request) {
   try {
-    const user = await getOrCreateUser();
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
 
-    // Delete all draft/pending contents for this user
-    await prisma.content.deleteMany({
-      where: {
-        userId: user.id,
-        status: { in: ["draft", "pending_generation"] },
-      },
+    if (!id) {
+      return NextResponse.json({ error: "id parameter is required" }, { status: 400 });
+    }
+
+    await prisma.content.delete({
+      where: { id },
     });
 
     return NextResponse.json({ success: true });
