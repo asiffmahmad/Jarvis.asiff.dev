@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import {
   PenSquare, Send, Calendar, Hash, Target, Copy, Check,
   X, ArrowLeft, Eye, Edit3, ThumbsUp, Loader2, Sparkles,
-  MessageCircle, Heart, Bookmark, ChevronDown, Globe, FileText,
+  MessageCircle, Heart, Bookmark, ChevronDown, Globe, FileText, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getGeneratedPost, clearGeneratedPost, getPendingGeneration, clearPendingGeneration, storeGeneratedPost } from "@/lib/cross-page-store";
@@ -547,9 +547,23 @@ export default function CreatePage() {
                       <span className="text-[10px] px-2 py-0.5 rounded font-mono uppercase bg-jarvis-panel border border-jarvis-panel-border/30 text-jarvis-text-muted">
                         {d.status === "pending_generation" ? "loading" : (d.post?.platform || "post")}
                       </span>
-                      <span className="text-[9px] text-jarvis-text-muted/60 font-mono">
-                        {new Date(d.updatedAt).toLocaleDateString()}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] text-jarvis-text-muted/60 font-mono">
+                          {new Date(d.updatedAt).toLocaleDateString()}
+                        </span>
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (confirm("Are you sure you want to delete this draft?")) {
+                              await deleteDraftFromDb(d.id);
+                            }
+                          }}
+                          className="p-1 rounded text-red-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                          title="Delete Draft"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
                     </div>
                     <h3 className="font-bold text-sm text-jarvis-text group-hover:text-jarvis-primary transition-colors line-clamp-2">
                       {d.title}
