@@ -22,7 +22,7 @@ interface PipelineStep {
   operation: string;
   color: string;
   icon: any;
-  // Node coordinates inside 500x300 graph space
+  // Node coordinates inside 650x450 graph space
   x: number;
   y: number;
 }
@@ -136,7 +136,7 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
       color: "#34F5D0", // Cyan
       icon: Cpu,
       x: 70,
-      y: 150,
+      y: 210,
     },
     {
       id: "research_agent",
@@ -152,8 +152,8 @@ Format cleanly with Markdown headers.`,
       operation: "Harvesting web data...",
       color: "#A061FF", // Purple
       icon: Search,
-      x: 210,
-      y: 50,
+      x: 220,
+      y: 60,
     },
     {
       id: "research_validation",
@@ -165,8 +165,8 @@ Format cleanly with Markdown headers.`,
       operation: "Auditing facts...",
       color: "#00E676", // Emerald
       icon: ShieldCheck,
-      x: 350,
-      y: 50,
+      x: 430,
+      y: 60,
     },
     {
       id: "content_creation",
@@ -180,8 +180,8 @@ Return the output as a draft post.`,
       operation: "Drafting layout...",
       color: "#FF4081", // Pink
       icon: PenTool,
-      x: 480,
-      y: 150,
+      x: 580,
+      y: 210,
     },
     {
       id: "content_polish",
@@ -203,8 +203,8 @@ Format the final output strictly as JSON with this structure (do not include cod
       operation: "Generating JSON...",
       color: "#FF9100", // Orange
       icon: Layout,
-      x: 350,
-      y: 250,
+      x: 430,
+      y: 360,
     },
     {
       id: "jarvis_agent",
@@ -218,10 +218,22 @@ If the post passes audits, write a validation summary approving the post.`,
       operation: "JARVIS quality audit...",
       color: "#FF1744", // Ruby Red
       icon: ShieldAlert,
-      x: 210,
-      y: 250,
+      x: 220,
+      y: 360,
     },
   ]);
+
+  // Curved Bezier Connection Path coordinates corresponding to step indices
+  const connectionPaths = [
+    "M 70 210 C 70 110, 130 60, 220 60", // 0 -> 1 (Planner -> Web Intel)
+    "M 220 60 C 290 90, 360 90, 430 60", // 1 -> 2 (Web Intel -> Fact Auditor)
+    "M 430 60 C 520 60, 580 110, 580 210", // 2 -> 3 (Fact Auditor -> Copywriter)
+    "M 580 210 C 580 310, 520 360, 430 360", // 3 -> 4 (Copywriter -> SEO Optimizer)
+    "M 430 360 C 360 330, 290 330, 220 360", // 4 -> 5 (SEO Optimizer -> JARVIS Auditor)
+  ];
+
+  // Failure loop path: Jarvis back to Copywriter (curved under sweep)
+  const jarvisFeedbackPath = "M 220 360 C 220 440, 580 440, 580 210";
 
   const reset = useCallback(() => {
     setSteps(s => s.map(st => ({ ...st, status: "pending" as const, result: "" })));
@@ -421,10 +433,10 @@ If the post passes audits, write a validation summary approving the post.`,
           <div className="absolute inset-0 bg-[radial-gradient(#ffffff03_1px,transparent_1px)] [background-size:24px_24px] opacity-60 pointer-events-none" />
 
           {/* SVG Canvas Workspace */}
-          <div className="w-full max-w-[580px] h-[360px] relative shrink-0">
+          <div className="w-full max-w-[650px] h-[440px] relative shrink-0">
             
             {/* Connection Lines & Flowing Communication Particles */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 550 300">
+            <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 650 420">
               
               {/* Glow filter definition */}
               <defs>
@@ -437,50 +449,45 @@ If the post passes audits, write a validation summary approving the post.`,
                 </filter>
               </defs>
 
-              {/* Render Connection Lines */}
+              {/* Render Curved Connection Paths */}
               {steps.map((step, idx) => {
                 if (idx >= steps.length - 1) return null;
-                const nextStep = steps[idx + 1];
+                const pathD = connectionPaths[idx];
                 const isLineActive = currentStepIndex === idx && isRunning;
                 const strokeColor = isLineActive ? step.color : "rgba(255,255,255,0.06)";
                 
                 return (
                   <g key={`path-${idx}`}>
-                    {/* Underlying Glow Line */}
+                    {/* Underlying Glow Curve */}
                     {isLineActive && (
-                      <line
-                        x1={step.x}
-                        y1={step.y}
-                        x2={nextStep.x}
-                        y2={nextStep.y}
+                      <path
+                        d={pathD}
+                        fill="none"
                         stroke={step.color}
                         strokeWidth="4"
                         opacity="0.3"
                         filter="url(#neon-glow)"
                       />
                     )}
-                    {/* Core Line */}
-                    <line
-                      x1={step.x}
-                      y1={step.y}
-                      x2={nextStep.x}
-                      y2={nextStep.y}
+                    {/* Core Curve */}
+                    <path
+                      d={pathD}
+                      fill="none"
                       stroke={strokeColor}
-                      strokeWidth={isLineActive ? "2" : "1"}
+                      strokeWidth={isLineActive ? "2" : "1.2"}
                       strokeDasharray={isLineActive ? "4,4" : "0"}
                       className={cn(isLineActive && "animate-[dash_8s_linear_infinite]")}
                     />
 
-                    {/* Flowing Data Particle (glowing dot travelling along path) */}
+                    {/* Flowing Data Particle (glowing dot travelling along the Bezier path) */}
                     {isLineActive && (
-                      <motion.circle
-                        r="4"
-                        fill={step.color}
-                        filter="url(#neon-glow)"
-                        initial={{ cx: step.x, cy: step.y }}
-                        animate={{ cx: nextStep.x, cy: nextStep.y }}
-                        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                      />
+                      <circle r="4.5" fill={step.color} filter="url(#neon-glow)">
+                        <animateMotion
+                          dur="2.2s"
+                          repeatCount="indefinite"
+                          path={pathD}
+                        />
+                      </circle>
                     )}
                   </g>
                 );
@@ -491,24 +498,21 @@ If the post passes audits, write a validation summary approving the post.`,
                 <g>
                   {/* Curved Loop Line */}
                   <path
-                    d={`M ${steps[5].x} ${steps[5].y} C ${ (steps[5].x + steps[3].x) / 2 } ${ steps[5].y + 60 }, ${ (steps[5].x + steps[3].x) / 2 } ${ steps[3].y + 60 }, ${steps[3].x} ${steps[3].y}`}
+                    d={jarvisFeedbackPath}
                     fill="none"
-                    stroke={isRunning && currentStepIndex === 3 ? "#FF1744" : "rgba(255,23,68,0.15)"}
+                    stroke={isRunning && currentStepIndex === 3 ? "#FF1744" : "rgba(255,23,68,0.12)"}
                     strokeWidth={isRunning && currentStepIndex === 3 ? "2" : "1"}
                     strokeDasharray="4,4"
                   />
                   {/* Glowing Flowing Failure Dot packets */}
                   {isRunning && currentStepIndex === 3 && (
-                    <motion.circle
-                      r="4.5"
-                      fill="#FF1744"
-                      filter="url(#neon-glow)"
-                      animate={{
-                        cx: [steps[5].x, (steps[5].x + steps[3].x) / 2, steps[3].x],
-                        cy: [steps[5].y, steps[5].y + 60, steps[3].y]
-                      }}
-                      transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                    />
+                    <circle r="5" fill="#FF1744" filter="url(#neon-glow)">
+                      <animateMotion
+                        dur="2.5s"
+                        repeatCount="indefinite"
+                        path={jarvisFeedbackPath}
+                      />
+                    </circle>
                   )}
                 </g>
               )}
