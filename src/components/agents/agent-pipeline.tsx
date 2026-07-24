@@ -32,7 +32,11 @@ interface ParsedPost {
 
 function tryParsePost(text: string): ParsedPost | null {
   try {
-    const p = safeJsonParse(text) as Record<string, unknown>;
+    let cleaned = text.trim();
+    if (cleaned.startsWith("```")) {
+      cleaned = cleaned.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+    }
+    const p = safeJsonParse(cleaned) as Record<string, unknown>;
     if (p.caption) {
       return {
         title: (p.title as string) || "",
@@ -210,6 +214,7 @@ If the post passes audits, write a validation summary approving the post.`,
     if (!abortRef.current) abortRef.current = new AbortController();
     
     let currentInput = promptInput;
+    let polishedResult = "";
     setIsRunning(true);
 
     try {
@@ -251,6 +256,9 @@ If the post passes audits, write a validation summary approving the post.`,
         });
 
         currentInput = result;
+        if (steps[i].id === "content_polish") {
+          polishedResult = result;
+        }
 
         // Step 5 check: Jarvis validation failure simulation on first pass
         if (i === 5 && !isFailedAttempt && !hasFailedOnce) {
@@ -259,7 +267,7 @@ If the post passes audits, write a validation summary approving the post.`,
       }
 
       // Successful completion
-      const finalJson = steps[4].result || currentInput;
+      const finalJson = polishedResult || currentInput;
       const parsed = tryParsePost(finalJson);
       if (parsed) {
         setPost({
