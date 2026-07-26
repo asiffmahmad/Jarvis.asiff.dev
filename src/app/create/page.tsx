@@ -45,6 +45,39 @@ function AccountAvatar({ account, size = "md" }: { account: ConnectedAccount; si
   );
 }
 
+function PixabayPreview({ apiUrl, mediaType }: { apiUrl: string; mediaType: string }) {
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!apiUrl || !apiUrl.includes("pixabay.com")) {
+      // Not a Pixabay URL, try just rendering it if it's a direct URL
+      setMediaUrl(apiUrl);
+      return;
+    }
+    fetch(apiUrl)
+      .then(res => res.json())
+      .then(data => {
+        if (mediaType === "video" && data.hits?.[0]?.videos?.medium?.url) {
+          setMediaUrl(data.hits[0].videos.medium.url);
+        } else if (mediaType === "image" && data.hits?.[0]?.largeImageURL) {
+          setMediaUrl(data.hits[0].largeImageURL);
+        } else {
+          setError("No media found from Pixabay API");
+        }
+      })
+      .catch(err => setError(err.message));
+  }, [apiUrl, mediaType]);
+
+  if (error) return <div className="text-red-500 text-xs p-4 bg-red-500/10 rounded-xl font-mono">{error}</div>;
+  if (!mediaUrl) return <div className="p-8 flex justify-center bg-gray-100"><Loader2 className="size-6 animate-spin text-gray-400" /></div>;
+
+  if (mediaType === "video") {
+    return <video src={mediaUrl} controls autoPlay loop muted className="w-full h-auto max-h-[400px] object-cover bg-black" />;
+  }
+  return <img src={mediaUrl} alt="Preview" className="w-full h-auto max-h-[400px] object-cover bg-black" />;
+}
+
 function PlatformPreview({ post, account }: { post: PostData; account: ConnectedAccount | null }) {
   const cfg = platformConfig[post.platform] || platformConfig.linkedin;
   const displayName = account?.accountName || "Account";
@@ -72,6 +105,11 @@ function PlatformPreview({ post, account }: { post: PostData; account: Connected
             <p className="font-bold text-gray-900 text-base">{post.title}</p>
             <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap leading-relaxed">{post.caption}</p>
           </div>
+          {post.hashtags.includes("media") && post.mediaIdeas?.[0] && (
+            <div className="rounded-lg overflow-hidden border border-gray-200 mt-3 -mx-4 sm:mx-0">
+              <PixabayPreview apiUrl={post.mediaIdeas[0]} mediaType={post.hashtags.includes("video") ? "video" : "image"} />
+            </div>
+          )}
           {post.hashtags.length > 0 && (
             <p className="text-sm text-[#0A66C2]">{post.hashtags.map(h => `#${h}`).join(" ")}</p>
           )}
@@ -100,9 +138,14 @@ function PlatformPreview({ post, account }: { post: PostData; account: Connected
           <span className="text-sm font-semibold text-gray-900">{handle.replace("@", "")}</span>
           <span className="ml-auto text-gray-600">•••</span>
         </div>
-        <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-400 text-sm">
-          <Target className="size-8" />
-        </div>
+        
+        {post.hashtags.includes("media") && post.mediaIdeas?.[0] ? (
+          <PixabayPreview apiUrl={post.mediaIdeas[0]} mediaType={post.hashtags.includes("video") ? "video" : "image"} />
+        ) : (
+          <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-400 text-sm">
+            <Target className="size-8" />
+          </div>
+        )}
         <div className="p-3 space-y-2">
           <div className="flex items-center gap-3">
             <Heart className="size-5 text-gray-900" />
@@ -138,6 +181,11 @@ function PlatformPreview({ post, account }: { post: PostData; account: Connected
             <span className="ml-auto text-gray-500 text-sm font-bold">𝕏</span>
           </div>
           <p className="text-[15px] text-white leading-relaxed whitespace-pre-wrap">{post.caption}</p>
+          {post.hashtags.includes("media") && post.mediaIdeas?.[0] && (
+            <div className="rounded-2xl overflow-hidden border border-gray-800 mt-3">
+              <PixabayPreview apiUrl={post.mediaIdeas[0]} mediaType={post.hashtags.includes("video") ? "video" : "image"} />
+            </div>
+          )}
           {post.hashtags.length > 0 && (
             <p className="text-sm text-[#1d9bf0]">{post.hashtags.map(h => `#${h}`).join(" ")}</p>
           )}
@@ -167,6 +215,11 @@ function PlatformPreview({ post, account }: { post: PostData; account: Connected
         </div>
         <p className="font-bold text-gray-900 text-base">{post.title}</p>
         <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{post.caption}</p>
+        {post.hashtags.includes("media") && post.mediaIdeas?.[0] && (
+          <div className="rounded-lg overflow-hidden border border-gray-200 mt-3 -mx-4 sm:mx-0">
+            <PixabayPreview apiUrl={post.mediaIdeas[0]} mediaType={post.hashtags.includes("video") ? "video" : "image"} />
+          </div>
+        )}
         {post.hashtags.length > 0 && (
           <p className="text-sm" style={{ color: cfg.color }}>{post.hashtags.map(h => `#${h}`).join(" ")}</p>
         )}

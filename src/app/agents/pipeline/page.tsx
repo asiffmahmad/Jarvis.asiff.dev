@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { AppLayout } from "@/components/layout/app-layout";
-import { Route, Save, Loader2, Plus, X, Lock, Cpu } from "lucide-react";
+import { Route, Save, Loader2, Plus, X, Lock, Cpu, Trash2, PenTool } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Agent = {
@@ -15,17 +15,23 @@ type Agent = {
   isActive: boolean;
 };
 
+type PipelineConfig = {
+  id: string;
+  name: string;
+  flow: string[];
+};
+
 export default function PipelineSettingsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [pipelineFlow, setPipelineFlow] = useState<string[]>([]);
+  const [pipelines, setPipelines] = useState<PipelineConfig[]>([]);
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string>("default");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [errorText, setErrorText] = useState("");
 
   useEffect(() => {
     fetchData();
   }, []);
-
-  const [errorText, setErrorText] = useState("");
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -38,7 +44,7 @@ export default function PipelineSettingsPage() {
       const confText = await configRes.text();
       
       if (!registryRes.ok || !configRes.ok) {
-        setErrorText(`Error loading API. Registry: ${registryRes.status} | Config: ${configRes.status}. Registry response: ${regText.slice(0, 100)}`);
+        setErrorText(`Error loading API. Registry: ${registryRes.status} | Config: ${configRes.status}`);
         return;
       }
       
@@ -46,13 +52,15 @@ export default function PipelineSettingsPage() {
         const registryData = JSON.parse(regText);
         const configData = JSON.parse(confText);
         setAgents(registryData);
-        setPipelineFlow(configData.pipelineFlow || []);
+        setPipelines(configData.pipelines || []);
+        if (configData.pipelines && configData.pipelines.length > 0) {
+          setSelectedPipelineId(configData.pipelines[0].id);
+        }
       } catch (e: any) {
-        setErrorText("Failed to parse JSON: " + e.message + " | Content: " + regText.slice(0, 50));
+        setErrorText("Failed to parse JSON: " + e.message);
       }
     } catch (err: any) {
       setErrorText("Network Error: " + err.message);
-      console.error("Failed to fetch data", err);
     } finally {
       setIsLoading(false);
     }
@@ -64,24 +72,49 @@ export default function PipelineSettingsPage() {
       const res = await fetch("/api/pipeline/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pipelineFlow })
+        body: JSON.stringify({ pipelines })
       });
       if (res.ok) {
         // success
       }
     } catch (err) {
-      console.error("Failed to save pipeline", err);
+      console.error("Failed to save pipelines", err);
     } finally {
       setIsSaving(false);
     }
   };
 
+  const currentPipeline = pipelines.find(p => p.id === selectedPipelineId);
+  const pipelineFlow = currentPipeline ? currentPipeline.flow : [];
+
+  const updateCurrentPipelineFlow = (newFlow: string[]) => {
+    setPipelines(prev => prev.map(p => p.id === selectedPipelineId ? { ...p, flow: newFlow } : p));
+  };
+
   const addAgentToPipeline = (agentId: string) => {
-    setPipelineFlow(prev => [...prev, agentId]);
+    updateCurrentPipelineFlow([...pipelineFlow, agentId]);
   };
 
   const removeAgentFromPipeline = (index: number) => {
-    setPipelineFlow(prev => prev.filter((_, i) => i !== index));
+    updateCurrentPipelineFlow(pipelineFlow.filter((_, i) => i !== index));
+  };
+
+  const createNewPipeline = () => {
+    const id = Math.random().toString(36).substring(7);
+    const newPipeline = { id, name: "New Pipeline", flow: [] };
+    setPipelines([...pipelines, newPipeline]);
+    setSelectedPipelineId(id);
+  };
+
+  const deleteCurrentPipeline = () => {
+    if (pipelines.length <= 1) return; // don't delete the last one
+    const newPipelines = pipelines.filter(p => p.id !== selectedPipelineId);
+    setPipelines(newPipelines);
+    setSelectedPipelineId(newPipelines[0].id);
+  };
+
+  const renameCurrentPipeline = (name: string) => {
+    setPipelines(prev => prev.map(p => p.id === selectedPipelineId ? { ...p, name } : p));
   };
 
   const jarvis = agents.find(a => a.name === "JARVIS");
@@ -122,6 +155,7 @@ export default function PipelineSettingsPage() {
                   key={agent.id}
                   onClick={() => addAgentToPipeline(agent.id)}
                   className="w-full text-left p-4 rounded-xl transition-all duration-300 relative overflow-hidden group bg-jarvis-panel/20 border border-jarvis-panel hover:bg-jarvis-panel/60 hover:border-jarvis-primary/50"
+                  disabled={!currentPipeline}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-bold text-sm tracking-wide text-white group-hover:text-jarvis-primary transition-colors">
@@ -144,22 +178,55 @@ export default function PipelineSettingsPage() {
           
           <div className="max-w-4xl mx-auto p-8 space-y-8 relative z-10">
             <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-3xl font-heading font-bold text-white mb-2 flex items-center gap-3">
-                  <Route className="size-8 text-jarvis-primary drop-shadow-[0_0_15px_rgba(52,245,208,0.5)]" />
-                  Pipeline Sequence
-                </h2>
+              <div className="flex-1 mr-8">
+                <div className="flex items-center gap-4 mb-4">
+                  <select
+                    value={selectedPipelineId}
+                    onChange={(e) => setSelectedPipelineId(e.target.value)}
+                    className="bg-jarvis-panel border border-jarvis-panel-border rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-jarvis-primary w-64"
+                  >
+                    {pipelines.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={createNewPipeline}
+                    className="text-xs text-jarvis-primary uppercase tracking-widest font-bold flex items-center gap-1 hover:text-white transition-colors"
+                  >
+                    <Plus className="size-3" /> New Pipeline
+                  </button>
+                </div>
+
+                {currentPipeline && (
+                  <div className="flex items-center gap-4 mt-2">
+                    <div className="relative w-full max-w-md group">
+                      <input
+                        type="text"
+                        value={currentPipeline.name}
+                        onChange={(e) => renameCurrentPipeline(e.target.value)}
+                        placeholder="Enter Pipeline Name..."
+                        className="text-3xl font-heading font-bold text-white mb-2 bg-transparent border-b-2 border-jarvis-panel-border/50 hover:border-jarvis-primary/50 focus:border-jarvis-primary outline-none transition-colors w-full pb-1 pr-10"
+                      />
+                      <PenTool className="absolute right-2 top-3 size-5 text-jarvis-text-muted group-hover:text-jarvis-primary transition-colors pointer-events-none opacity-50" />
+                    </div>
+                    {pipelines.length > 1 && (
+                      <button onClick={deleteCurrentPipeline} className="text-red-400 hover:text-red-300 transition-colors p-2 bg-red-500/10 rounded-lg" title="Delete Pipeline">
+                        <Trash2 className="size-5" />
+                      </button>
+                    )}
+                  </div>
+                )}
                 <p className="text-sm text-jarvis-text-muted">
-                  Configure the order of automation execution.
+                  Configure the order of automation execution for this pipeline.
                 </p>
               </div>
               <button 
                 onClick={handleSave}
                 disabled={isSaving}
-                className="flex items-center gap-2 bg-jarvis-primary/10 hover:bg-jarvis-primary/20 text-jarvis-primary border border-jarvis-primary/30 px-6 py-3 rounded-xl transition-all shadow-[0_0_15px_rgba(52,245,208,0.1)] font-bold uppercase text-xs tracking-widest disabled:opacity-50"
+                className="flex items-center gap-2 bg-jarvis-primary/10 hover:bg-jarvis-primary/20 text-jarvis-primary border border-jarvis-primary/30 px-6 py-3 rounded-xl transition-all shadow-[0_0_15px_rgba(52,245,208,0.1)] font-bold uppercase text-xs tracking-widest disabled:opacity-50 shrink-0"
               >
                 {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-                Save Sequence
+                Save Config
               </button>
             </div>
 

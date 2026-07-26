@@ -49,6 +49,21 @@ function tryParsePost(text: string): ParsedPost | null {
       cleaned = cleaned.substring(startIdx, endIdx + 1);
     }
     const p = safeJsonParse(cleaned) as Record<string, unknown>;
+    
+    // Check if it's a Media Developer JSON
+    if (p && p.mediaType && p.apiUrl) {
+       return {
+         title: (p.query as string) || "Media Developer Output",
+         caption: `[Generated Media Result]\nMedia Type: ${p.mediaType}\nAPI URL: ${p.apiUrl}\n\nThis media was generated autonomously via the pipeline.`,
+         hashtags: ["media", p.mediaType as string],
+         mediaIdeas: [p.apiUrl as string],
+         callToAction: "Check out this media",
+         platform: "instagram",
+         bestPostingTime: "12:00 PM"
+       };
+    }
+    
+    // Check if it's a standard Post JSON
     if (p && p.caption) {
       return {
         title: (p.title as string) || "",
@@ -132,6 +147,10 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
   const [loopFeedback, setLoopFeedback] = useState<string | null>(null);
 
   const [steps, setSteps] = useState<PipelineStep[]>([]);
+  const [agentsList, setAgentsList] = useState<any[]>([]);
+  const [pipelines, setPipelines] = useState<any[]>([]);
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string>("default");
+
   const connectionPaths: string[] = [];
 
   useEffect(() => {
@@ -143,62 +162,76 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
         ]);
         if (!regRes.ok || !confRes.ok) return;
         const agents = await regRes.json();
-        const { pipelineFlow } = await confRes.json();
+        const { pipelineFlow, pipelines: fetchedPipelines } = await confRes.json();
 
-        const loadedSteps: PipelineStep[] = [];
-        let startX = 80;
-        
-        // Dynamic Palette for colorful nodes
-        const colors = ["#FF3366", "#00E5FF", "#FFD500", "#B200FF", "#00FF66", "#FF9900"];
-        
-        // Add configured agents
-        for (let idx = 0; idx < pipelineFlow.length; idx++) {
-          const id = pipelineFlow[idx];
-          const agent = agents.find((a: any) => a.id === id);
-          if (agent) {
-            loadedSteps.push({
-              id: agent.id,
-              name: agent.name,
-              description: agent.description || "",
-              status: "pending",
-              result: "",
-              systemPrompt: agent.systemPrompt,
-              operation: `Running ${agent.name}...`,
-              color: colors[idx % colors.length],
-              icon: Cpu,
-              x: startX,
-              y: idx % 2 === 0 ? 140 : 280, // Zig-zag pattern
-            });
-            startX += 110;
-          }
+        let pList = fetchedPipelines;
+        if (!pList || pList.length === 0) {
+           pList = [{ id: "default", name: "Default Pipeline", flow: pipelineFlow }];
         }
-
-        // Always append JARVIS
-        const jarvis = agents.find((a: any) => a.name === "JARVIS");
-        if (jarvis) {
-           const jIdx = loadedSteps.length;
-           loadedSteps.push({
-              id: jarvis.id,
-              name: jarvis.name,
-              description: jarvis.description || "",
-              status: "pending",
-              result: "",
-              systemPrompt: jarvis.systemPrompt,
-              operation: "Final JARVIS Audit...",
-              color: "#FF1744", // Distinct crimson for JARVIS
-              icon: ShieldCheck,
-              x: startX + 20,
-              y: 210, // Center JARVIS at the end
-            });
+        
+        setAgentsList(agents);
+        setPipelines(pList);
+        // If the URL or something specifies a default, we could set it, but we default to 'default' or first available
+        if (pList.length > 0 && !pList.find((p:any) => p.id === "default")) {
+           setSelectedPipelineId(pList[0].id);
         }
-
-        setSteps(loadedSteps);
       } catch (err) {
         console.error("Failed to load pipeline configuration", err);
       }
     }
     loadPipeline();
   }, []);
+
+  useEffect(() => {
+    if (agentsList.length > 0 && pipelines.length > 0 && !isRunning) {
+      const activeFlow = pipelines.find(p => p.id === selectedPipelineId)?.flow || pipelines[0].flow;
+      
+      const loadedSteps: PipelineStep[] = [];
+      let startX = 80;
+      
+      const colors = ["#FF3366", "#00E5FF", "#FFD500", "#B200FF", "#00FF66", "#FF9900"];
+      
+      for (let idx = 0; idx < activeFlow.length; idx++) {
+        const id = activeFlow[idx];
+        const agent = agentsList.find((a: any) => a.id === id);
+        if (agent) {
+          loadedSteps.push({
+            id: agent.id,
+            name: agent.name,
+            description: agent.description || "",
+            status: "pending",
+            result: "",
+            systemPrompt: agent.systemPrompt,
+            operation: `Running ${agent.name}...`,
+            color: colors[idx % colors.length],
+            icon: Cpu,
+            x: startX,
+            y: idx % 2 === 0 ? 140 : 280,
+          });
+          startX += 110;
+        }
+      }
+
+      const jarvis = agentsList.find((a: any) => a.name === "JARVIS");
+      if (jarvis) {
+         loadedSteps.push({
+            id: jarvis.id,
+            name: jarvis.name,
+            description: jarvis.description || "",
+            status: "pending",
+            result: "",
+            systemPrompt: jarvis.systemPrompt,
+            operation: "Final JARVIS Audit...",
+            color: "#FF1744",
+            icon: ShieldCheck,
+            x: startX + 20,
+            y: 210,
+          });
+      }
+
+      setSteps(loadedSteps);
+    }
+  }, [selectedPipelineId, agentsList, pipelines, isRunning]);
 
   const reset = useCallback(() => {
     setSteps(s => s.map(st => ({ ...st, status: "pending" as const, result: "" })));
@@ -436,6 +469,19 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
       <div className="p-6 border-b border-jarvis-panel/30 glass-strong bg-jarvis-panel/10 shrink-0 relative z-10">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-4">
           <div className="flex-1 w-full relative">
+            <div className="flex items-center gap-4 mb-2">
+              <span className="text-[10px] font-mono font-bold text-jarvis-text uppercase tracking-widest">Select Pipeline:</span>
+              <select
+                value={selectedPipelineId}
+                onChange={(e) => setSelectedPipelineId(e.target.value)}
+                disabled={isRunning}
+                className="bg-jarvis-panel/50 border border-jarvis-panel-border rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-jarvis-primary max-w-xs"
+              >
+                {pipelines.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
             <textarea
               value={topic}
               disabled={isRunning}

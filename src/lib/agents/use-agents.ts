@@ -62,6 +62,20 @@ Return ONLY valid JSON with this structure:
 Rules: Return raw JSON only - no markdown, no code fences.`,
     capabilities: ["Media Search", "API Integration"],
   },
+  {
+    id: "req-val-005",
+    name: "Request Validator",
+    description: "Ensures the generated content strictly fulfills the original user request",
+    systemPrompt: `[JARVIS INTELLIGENCE PROTOCOL: REQUEST VALIDATOR]
+You are the Request Validator. Your job is to act as a strict gatekeeper. 
+Compare the generated output you receive against the original user prompt/request.
+If the output fulfills the user's request accurately, output the JSON exactly as received.
+If the output fails to fulfill the user's request (e.g., missing specific keywords, wrong format, irrelevant), you MUST REJECT it.
+To reject, start your response EXACTLY with 'REJECTED: [Previous Agent Name] |' followed by a detailed explanation of what is missing based on the user's initial request.`,
+    model: "llama-3.3-70b-versatile",
+    apiProvider: "groq",
+    isActive: true,
+  }
 ];
 
 export function useAgents() {

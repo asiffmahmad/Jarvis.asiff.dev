@@ -81,6 +81,24 @@ export async function GET() {
       `;
       agents = await prisma.$queryRaw`SELECT * FROM Agent`;
     }
+    // Auto-seed Request Validator if it doesn't exist
+    if (!agents.find(a => a.name === "Request Validator")) {
+      await prisma.$executeRaw`
+        INSERT INTO Agent (id, name, description, systemPrompt, model, apiProvider, usageLeft, isActive, updatedAt)
+        VALUES (
+          ${Math.random().toString(36).substring(7)},
+          'Request Validator',
+          'Ensures the generated content strictly fulfills the original user request',
+          '[JARVIS INTELLIGENCE PROTOCOL: REQUEST VALIDATOR]\nYou are the Request Validator. Your job is to act as a strict gatekeeper.\nCompare the generated output you receive against the original user prompt/request.\nIf the output fulfills the user''s request accurately, output the JSON exactly as received.\nIf the output fails to fulfill the user''s request (e.g., missing specific keywords, wrong format, irrelevant), you MUST REJECT it.\nTo reject, start your response EXACTLY with ''REJECTED: [Previous Agent Name] |'' followed by a detailed explanation of what is missing based on the user''s initial request.',
+          'llama-3.3-70b-versatile',
+          'groq',
+          1000,
+          1,
+          NOW()
+        )
+      `;
+      agents = await prisma.$queryRaw`SELECT * FROM Agent`;
+    }
     
     return NextResponse.json(agents);
   } catch (error: any) {
