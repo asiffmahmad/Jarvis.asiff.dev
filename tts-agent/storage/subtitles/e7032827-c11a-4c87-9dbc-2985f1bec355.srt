@@ -1,0 +1,3 @@
+1
+00:00:00,000 --> 00:00:13,000
+This audio agent needs to be configured in my Jarvis. I'll add the URL in the .env file later, and I'll deploy this on a separate website and then replace it.

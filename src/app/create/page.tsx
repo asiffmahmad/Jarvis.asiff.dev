@@ -72,6 +72,14 @@ function PixabayPreview({ apiUrl, mediaType }: { apiUrl: string; mediaType: stri
   if (error) return <div className="text-red-500 text-xs p-4 bg-red-500/10 rounded-xl font-mono">{error}</div>;
   if (!mediaUrl) return <div className="p-8 flex justify-center bg-gray-100"><Loader2 className="size-6 animate-spin text-gray-400" /></div>;
 
+  if (mediaType === "audio") {
+    return (
+      <div className="p-4 bg-gray-100 flex flex-col gap-2 rounded-lg">
+        <audio src={mediaUrl} controls className="w-full h-12" />
+      </div>
+    );
+  }
+
   if (mediaType === "video") {
     return <video src={mediaUrl} controls autoPlay loop muted className="w-full h-auto max-h-[400px] object-cover bg-black" />;
   }
@@ -105,9 +113,16 @@ function PlatformPreview({ post, account }: { post: PostData; account: Connected
             <p className="font-bold text-gray-900 text-base">{post.title}</p>
             <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap leading-relaxed">{post.caption}</p>
           </div>
-          {post.hashtags.includes("media") && post.mediaIdeas?.[0] && (
-            <div className="rounded-lg overflow-hidden border border-gray-200 mt-3 -mx-4 sm:mx-0">
-              <PixabayPreview apiUrl={post.mediaIdeas[0]} mediaType={post.hashtags.includes("video") ? "video" : "image"} />
+          {post.hashtags.includes("media") && post.mediaIdeas && post.mediaIdeas.length > 0 && (
+            <div className="flex flex-col gap-3 mt-3 -mx-4 sm:mx-0">
+              {post.mediaIdeas.map((idea, idx) => {
+                const isAudio = idea.includes(".m4a") || idea.includes(".mp3") || idea.includes(".wav") || idea.includes("/audio/");
+                return (
+                  <div key={idx} className="rounded-lg overflow-hidden border border-gray-200">
+                    <PixabayPreview apiUrl={idea} mediaType={isAudio ? "audio" : "video"} />
+                  </div>
+                );
+              })}
             </div>
           )}
           {post.hashtags.length > 0 && (
@@ -139,8 +154,15 @@ function PlatformPreview({ post, account }: { post: PostData; account: Connected
           <span className="ml-auto text-gray-600">•••</span>
         </div>
         
-        {post.hashtags.includes("media") && post.mediaIdeas?.[0] ? (
-          <PixabayPreview apiUrl={post.mediaIdeas[0]} mediaType={post.hashtags.includes("video") ? "video" : "image"} />
+        {post.hashtags.includes("media") && post.mediaIdeas && post.mediaIdeas.length > 0 ? (
+          <div className="flex flex-col gap-3">
+            {post.mediaIdeas.map((idea, idx) => {
+              const isAudio = idea.includes(".m4a") || idea.includes(".mp3") || idea.includes(".wav") || idea.includes("/audio/");
+              return (
+                <PixabayPreview key={idx} apiUrl={idea} mediaType={isAudio ? "audio" : "video"} />
+              );
+            })}
+          </div>
         ) : (
           <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-400 text-sm">
             <Target className="size-8" />
@@ -181,9 +203,16 @@ function PlatformPreview({ post, account }: { post: PostData; account: Connected
             <span className="ml-auto text-gray-500 text-sm font-bold">𝕏</span>
           </div>
           <p className="text-[15px] text-white leading-relaxed whitespace-pre-wrap">{post.caption}</p>
-          {post.hashtags.includes("media") && post.mediaIdeas?.[0] && (
-            <div className="rounded-2xl overflow-hidden border border-gray-800 mt-3">
-              <PixabayPreview apiUrl={post.mediaIdeas[0]} mediaType={post.hashtags.includes("video") ? "video" : "image"} />
+          {post.hashtags.includes("media") && post.mediaIdeas && post.mediaIdeas.length > 0 && (
+            <div className="flex flex-col gap-3 mt-3">
+              {post.mediaIdeas.map((idea, idx) => {
+                const isAudio = idea.includes(".m4a") || idea.includes(".mp3") || idea.includes(".wav") || idea.includes("/audio/");
+                return (
+                  <div key={idx} className="rounded-2xl overflow-hidden border border-gray-800">
+                    <PixabayPreview apiUrl={idea} mediaType={isAudio ? "audio" : "video"} />
+                  </div>
+                );
+              })}
             </div>
           )}
           {post.hashtags.length > 0 && (
@@ -215,9 +244,16 @@ function PlatformPreview({ post, account }: { post: PostData; account: Connected
         </div>
         <p className="font-bold text-gray-900 text-base">{post.title}</p>
         <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{post.caption}</p>
-        {post.hashtags.includes("media") && post.mediaIdeas?.[0] && (
-          <div className="rounded-lg overflow-hidden border border-gray-200 mt-3 -mx-4 sm:mx-0">
-            <PixabayPreview apiUrl={post.mediaIdeas[0]} mediaType={post.hashtags.includes("video") ? "video" : "image"} />
+        {post.hashtags.includes("media") && post.mediaIdeas && post.mediaIdeas.length > 0 && (
+          <div className="flex flex-col gap-3 mt-3 -mx-4 sm:mx-0">
+            {post.mediaIdeas.map((idea, idx) => {
+              const isAudio = idea.includes(".m4a") || idea.includes(".mp3") || idea.includes(".wav") || idea.includes("/audio/");
+              return (
+                <div key={idx} className="rounded-lg overflow-hidden border border-gray-200">
+                  <PixabayPreview apiUrl={idea} mediaType={isAudio ? "audio" : "video"} />
+                </div>
+              );
+            })}
           </div>
         )}
         {post.hashtags.length > 0 && (

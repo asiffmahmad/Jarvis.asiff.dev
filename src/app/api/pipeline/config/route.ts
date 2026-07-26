@@ -30,8 +30,8 @@ export async function GET() {
     const settings = await getOrCreateSettings();
     const preferences = (settings.preferences as any) || {};
     
-    // Migration for backward compatibility
-    let pipelines = preferences.pipelines;
+    // Migrate default pipeline if needed
+    let pipelines = preferences.pipelines || [];
     if (!pipelines || pipelines.length === 0) {
       pipelines = [
         {
@@ -40,6 +40,56 @@ export async function GET() {
           flow: preferences.pipelineFlow || []
         }
       ];
+    }
+
+    // Dynamic ID lookup to prevent mismatched IDs across environments
+    let agents: any[] = await prisma.$queryRaw`SELECT id, name FROM Agent`;
+    const plannerAgent = agents.find(a => a.name === "Automation Planner");
+    const mediaAgent = agents.find(a => a.name === "Media Developer");
+    const voiceAgent = agents.find(a => a.name === "Voice Agent");
+
+    let hasUpdates = false;
+
+    // 1. Ensure Default Pipeline has agents if it is empty
+    const defaultPipeline = pipelines.find((p: any) => p.id === "default");
+    if (defaultPipeline && (!defaultPipeline.flow || defaultPipeline.flow.length === 0)) {
+      const flowIds = [];
+      if (plannerAgent) flowIds.push(plannerAgent.id);
+      if (mediaAgent) flowIds.push(mediaAgent.id);
+      defaultPipeline.flow = flowIds;
+      hasUpdates = true;
+    }
+
+    // 2. Ensure Audio & Video Pipeline exists
+    let audioVideoPipeline = pipelines.find((p: any) => p.name === "Audio & Video Pipeline");
+    if (!audioVideoPipeline) {
+      const flowIds = [];
+      if (plannerAgent) flowIds.push(plannerAgent.id);
+      if (mediaAgent) flowIds.push(mediaAgent.id);
+      if (voiceAgent) flowIds.push(voiceAgent.id);
+
+      audioVideoPipeline = {
+        id: "audio_video_pipeline",
+        name: "Audio & Video Pipeline",
+        flow: flowIds
+      };
+      
+      pipelines.push(audioVideoPipeline);
+      hasUpdates = true;
+    }
+
+    if (hasUpdates) {
+      preferences.pipelines = pipelines;
+      // Sync default flow to legacy pipelineFlow field
+      const def = pipelines.find((p: any) => p.id === "default");
+      if (def) {
+        preferences.pipelineFlow = def.flow;
+      }
+      
+      await prisma.settings.update({
+        where: { id: settings.id },
+        data: { preferences }
+      });
     }
 
     return NextResponse.json({ 

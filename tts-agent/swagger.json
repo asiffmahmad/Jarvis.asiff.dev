@@ -1,0 +1,72 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Jarvis TTS Agent API",
+    "version": "1.0.0",
+    "description": "Microservice for Text-to-Speech generation using Edge TTS"
+  },
+  "servers": [
+    {
+      "url": "/api/v1/tts"
+    }
+  ],
+  "paths": {
+    "/generate": {
+      "post": {
+        "summary": "Generate Audio",
+        "description": "Converts text to speech",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string" },
+                  "voice": { "type": "string", "default": "en-US-AriaNeural" },
+                  "speed": { "type": "number", "default": 1.0 },
+                  "pitch": { "type": "number", "default": 0 },
+                  "volume": { "type": "number", "default": 100 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful generation"
+          }
+        }
+      }
+    },
+    "/batch": {
+      "post": {
+        "summary": "Batch Generate Audio",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Batch processing result" }
+        }
+      }
+    },
+    "/voices": {
+      "get": {
+        "summary": "Get Voices",
+        "responses": {
+          "200": {
+            "description": "List of available voices"
+          }
+        }
+      }
+    }
+  }
+}

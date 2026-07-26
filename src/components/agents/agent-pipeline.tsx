@@ -48,7 +48,12 @@ function tryParsePost(text: string): ParsedPost | null {
     if (startIdx !== -1 && endIdx !== -1) {
       cleaned = cleaned.substring(startIdx, endIdx + 1);
     }
-    const p = safeJsonParse(cleaned) as Record<string, unknown>;
+    let p = safeJsonParse(cleaned) as Record<string, unknown>;
+    
+    // Unwrap { "post": {...} } wrapper if present
+    if (p && p.post && typeof p.post === "object") {
+      p = p.post as Record<string, unknown>;
+    }
     
     // Check if it's a Media Developer JSON
     if (p && p.mediaType && p.apiUrl) {
@@ -62,15 +67,31 @@ function tryParsePost(text: string): ParsedPost | null {
          bestPostingTime: "12:00 PM"
        };
     }
+
+    // Check if it's a Voice Agent JSON
+    if (p && p.mediaType === "audio" && p.text) {
+       return {
+         title: "Voice Agent Output",
+         caption: `[Generated Audio Request]\nVoice: ${p.voice}\n\nTranscript: ${p.text}`,
+         hashtags: ["media", "audio"],
+         mediaIdeas: [JSON.stringify({ text: p.text, voice: p.voice, isTTSRequest: true })],
+         callToAction: "Listen to this audio",
+         platform: "instagram",
+         bestPostingTime: "12:00 PM"
+       };
+    }
+    
+    // Accept both 'caption' and 'body' as the main text field
+    const captionText = (p?.caption || p?.body) as string | undefined;
     
     // Check if it's a standard Post JSON
-    if (p && p.caption) {
+    if (p && captionText) {
       return {
         title: (p.title as string) || "",
-        caption: p.caption as string,
+        caption: captionText,
         hashtags: Array.isArray(p.hashtags) ? p.hashtags as string[] : [],
         mediaIdeas: Array.isArray(p.mediaIdeas) ? p.mediaIdeas as string[] : [],
-        callToAction: (p.callToAction as string) || "",
+        callToAction: (p.callToAction || (p.call_to_action as any)?.text || "") as string,
         platform: ((p.platform as string) || "linkedin").toLowerCase(),
         bestPostingTime: (p.bestPostingTime as string) || "",
       };
@@ -264,6 +285,9 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
     try {
       let currentInput = `Input Data:\n${promptInput}\n\nUser Theme: ${topic.trim()}`;
       let finalResult = "";
+      const stepResults: Record<string, string> = {};
+      // Capture step names locally to avoid stale closure in post-processing
+      const stepNames = steps.map(s => s.name);
 
       for (let i = startIndex; i < steps.length; i++) {
         setCurrentStepIndex(i);
@@ -274,19 +298,24 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
         });
 
         const isJarvis = i === steps.length - 1;
+        const isSpecializedAgent = ["Voice Agent", "Media Developer"].includes(stepNames[i]);
         let systemPrompt = steps[i].systemPrompt;
         
         const jsonInstruction = "\n\nCRITICAL INSTRUCTION: Your output MUST be a valid JSON object containing the post with these exact keys: title, caption, hashtags (array), mediaIdeas (array), callToAction, platform, bestPostingTime. Output ONLY the raw JSON.";
+        
+        const jarvisPostFormat = `\n\nCRITICAL OUTPUT FORMAT: After your review word 'APPROVED:' or 'REJECTED:', output ONLY this exact JSON structure:\n{\n  "title": "Post headline",\n  "caption": "Full post text",\n  "hashtags": ["array", "of", "strings"],\n  "mediaIdeas": [],\n  "callToAction": "Call to action text",\n  "platform": "linkedin",\n  "bestPostingTime": "9:00 AM"\n}`;
 
         if (isJarvis) {
           if (revisionCountRef.current === 0) {
-            systemPrompt += "\n\nCRITICAL INSTRUCTION: Review the post carefully. If it is flawed, reject it by starting your response EXACTLY with 'REJECTED: [Agent Name] |' followed by detailed feedback. If it is perfect, start with 'APPROVED:' followed by the valid JSON post.";
+            systemPrompt += `\n\nCRITICAL INSTRUCTION: Review the post carefully. If it is flawed, reject it by starting your response EXACTLY with 'REJECTED: [Agent Name] |' followed by detailed feedback. If it is perfect, start with 'APPROVED:' followed by the valid JSON post.${jarvisPostFormat}`;
           } else {
-            systemPrompt += "\n\nCRITICAL INSTRUCTION: The post has been revised. You MUST approve it this time to prevent infinite loops. Start your response with 'APPROVED:' followed by the final valid JSON post.";
+            systemPrompt += `\n\nCRITICAL INSTRUCTION: The post has been revised. You MUST approve it this time. Start your response with 'APPROVED:' followed by the final valid JSON post.${jarvisPostFormat}`;
           }
-        } else {
+        } else if (!isSpecializedAgent) {
+          // Only add generic post JSON instruction to content-writing agents
           systemPrompt += jsonInstruction;
         }
+        // Voice Agent and Media Developer use their own specialized output formats from their system prompts
 
         // Inject JARVIS's previous feedback into EVERY agent in the loop until it reaches JARVIS again
         let contextToInject = "";
@@ -294,9 +323,15 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
             contextToInject = `\n\n[CRITICAL CONTEXT - PREVIOUS REJECTION FROM JARVIS]:\n${revisionContext}\n\n(Note: You are running as part of a revision loop. Ensure your output aligns with and fixes this feedback.)`;
         }
 
+        // Build lean context: original topic + previous step output only (token efficient)
+        let inputContext = `User Theme: ${topic.trim()}\n\nInput:\n${promptInput}`;
+        if (i > startIndex) {
+          inputContext = `User Theme: ${topic.trim()}\n\n[Previous Step — ${stepNames[i - 1]}]:\n${stepResults[stepNames[i - 1]] || ""}\n\nOriginal Input:\n${promptInput}`;
+        }
+
         const result = await streamAgent(
           systemPrompt,
-          currentInput + contextToInject,
+          inputContext + contextToInject,
           (text) => {
             setSteps(s => {
               const c = [...s];
@@ -313,6 +348,7 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
           return c;
         });
 
+        stepResults[stepNames[i]] = result;
         currentInput = `Previous Output from ${steps[i].name}:\n${result}`;
         finalResult = result;
 
@@ -324,8 +360,80 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
         }
       }
 
+      // Post-process the final output and merge any accumulated media generated throughout the pipeline
       const parsed = tryParsePost(finalResult);
       if (parsed) {
+        // Search through the pipeline step results to see if we generated media along the way
+        const mediaUrls: string[] = [];
+        let hasAudio = false;
+        let hasVideo = false;
+
+        for (const name of stepNames) {
+          const content = stepResults[name];
+          if (!content) continue;
+          
+          // 1. Check for Voice Agent Output
+          if (name === "Voice Agent") {
+            try {
+              let cleaned = content.trim();
+              const startIdx = cleaned.indexOf("{");
+              const endIdx = cleaned.lastIndexOf("}");
+              if (startIdx !== -1 && endIdx !== -1) {
+                cleaned = cleaned.substring(startIdx, endIdx + 1);
+              }
+              const p = JSON.parse(cleaned);
+              if (p.mediaType === "audio" && p.text) {
+                setSteps(s => { const c = [...s]; const voiceStep = c.find(x => x.name === "Voice Agent"); if (voiceStep) voiceStep.operation = "Synthesizing Audio..."; return c; });
+                const ttsRes = await fetch(`/api/tts/generate`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ text: p.text, voice: p.voice }),
+                });
+                const ttsData = await ttsRes.json();
+                if (ttsData.success && ttsData.audioUrl) {
+                  mediaUrls.push(ttsData.audioUrl);
+                  hasAudio = true;
+                }
+              }
+            } catch (e) {
+              console.error("Failed parsing/generating voice agent audio in loop", e);
+            }
+          }
+
+          // 2. Check for Media Developer Output
+          if (name === "Media Developer") {
+            try {
+              let cleaned = content.trim();
+              const startIdx = cleaned.indexOf("{");
+              const endIdx = cleaned.lastIndexOf("}");
+              if (startIdx !== -1 && endIdx !== -1) {
+                cleaned = cleaned.substring(startIdx, endIdx + 1);
+              }
+              const p = JSON.parse(cleaned);
+              if (p.apiUrl) {
+                mediaUrls.push(p.apiUrl);
+                hasVideo = p.mediaType === "video";
+              }
+            } catch (e) {
+              console.error("Failed parsing media developer URL in loop", e);
+            }
+          }
+        }
+
+        // If we accumulated any media, inject it into the final draft payload
+        if (mediaUrls.length > 0) {
+          parsed.mediaIdeas = mediaUrls;
+          if (!parsed.hashtags.includes("media")) {
+            parsed.hashtags.push("media");
+          }
+          if (hasAudio && !parsed.hashtags.includes("audio")) {
+            parsed.hashtags.push("audio");
+          }
+          if (hasVideo && !parsed.hashtags.includes("video")) {
+            parsed.hashtags.push("video");
+          }
+        }
+
         setPost({ ...parsed, title: parsed.title || topic.trim() });
       } else {
         setPost({

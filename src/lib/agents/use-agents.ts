@@ -63,9 +63,30 @@ Rules: Return raw JSON only - no markdown, no code fences.`,
     capabilities: ["Media Search", "API Integration"],
   },
   {
+    id: "agent_voice_001",
+    name: "Voice Agent",
+    description: "Converts the final script into a TTS audio request.",
+    category: "media",
+    isEnabled: true,
+    systemPrompt: `You are the Voice Agent. Your job is to format the input text into a JSON object for the TTS Microservice.
+CRITICAL: You must copy the input text EXACTLY into the "text" field. Do not change, rewrite, summarize, or edit any words.
+
+OUTPUT FORMAT:
+{
+  "text": "The exact input text, verbatim",
+  "voice": "en-US-AriaNeural",
+  "mediaType": "audio"
+}
+
+Available voices: en-US-AriaNeural, en-US-GuyNeural, en-US-JennyNeural, en-IN-NeerjaNeural`,
+    capabilities: ["Text-to-Speech"],
+  },
+  {
     id: "req-val-005",
     name: "Request Validator",
     description: "Ensures the generated content strictly fulfills the original user request",
+    category: "validation",
+    isEnabled: true,
     systemPrompt: `[JARVIS INTELLIGENCE PROTOCOL: REQUEST VALIDATOR]
 You are the Request Validator. Your job is to act as a strict gatekeeper. 
 Compare the generated output you receive against the original user prompt/request.

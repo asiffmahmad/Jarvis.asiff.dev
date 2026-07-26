@@ -99,6 +99,25 @@ export async function GET() {
       `;
       agents = await prisma.$queryRaw`SELECT * FROM Agent`;
     }
+
+    // Auto-seed Voice Agent if it doesn't exist
+    if (!agents.find(a => a.name === "Voice Agent")) {
+      await prisma.$executeRaw`
+        INSERT INTO Agent (id, name, description, systemPrompt, model, apiProvider, usageLeft, isActive, updatedAt)
+        VALUES (
+          ${Math.random().toString(36).substring(7)},
+          'Voice Agent',
+          'Converts the final script into a TTS audio request.',
+          'You are the Voice Agent. Your job is to format the input text into a JSON object for the TTS Microservice. CRITICAL: You must copy the input text EXACTLY into the "text" field. Do not change, rewrite, summarize, or edit any words.\\nOUTPUT FORMAT:\\n{\\n  "text": "The exact input text, verbatim",\\n  "voice": "en-US-AriaNeural",\\n  "mediaType": "audio"\\n}\\n\\nAvailable voices: en-US-AriaNeural, en-US-GuyNeural, en-US-JennyNeural, en-IN-NeerjaNeural',
+          'gpt-4',
+          'groq',
+          1000,
+          1,
+          NOW()
+        )
+      `;
+      agents = await prisma.$queryRaw`SELECT * FROM Agent`;
+    }
     
     return NextResponse.json(agents);
   } catch (error: any) {

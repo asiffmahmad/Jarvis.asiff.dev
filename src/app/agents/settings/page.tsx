@@ -155,12 +155,40 @@ export default function AgentSettingsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        let parsedResult = data.text;
+        let parsedResult: any = data.text;
         try {
-           parsedResult = JSON.parse(data.text);
+           let cleaned = data.text.trim();
+           const startIdx = cleaned.indexOf("{");
+           const endIdx = cleaned.lastIndexOf("}");
+           if (startIdx !== -1 && endIdx !== -1) {
+             cleaned = cleaned.substring(startIdx, endIdx + 1);
+           }
+           parsedResult = JSON.parse(cleaned);
            setTestExecutionResult(parsedResult);
            
-           if (parsedResult.apiUrl) {
+           if (parsedResult.mediaType === "audio" && parsedResult.text) {
+             const ttsRes = await fetch(`/api/tts/generate`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: parsedResult.text, voice: parsedResult.voice })
+             });
+             
+             if (ttsRes.ok) {
+                const ttsData = await ttsRes.json();
+                if (ttsData.success && ttsData.audioUrl) {
+                  setTestMediaResult({ type: "audio", data: { url: ttsData.audioUrl }, status: "success" });
+                } else {
+                  setTestMediaResult({ type: "audio", error: ttsData.error || "Generation failed", status: "error" });
+                }
+             } else {
+                let errText = "TTS Server Error";
+                try {
+                  const errData = await ttsRes.json();
+                  errText = errData.error || errText;
+                } catch(e) {}
+                setTestMediaResult({ type: "audio", error: errText, status: "error" });
+             }
+           } else if (parsedResult.apiUrl) {
              let finalUrl = parsedResult.apiUrl;
              try {
                const urlObj = new URL(finalUrl);
@@ -419,13 +447,17 @@ export default function AgentSettingsPage() {
                              </div>
                            )}
 
-                           {testMediaResult.status === "success" && (!testMediaResult.data.hits || testMediaResult.data.hits.length === 0) && (
+                           {testMediaResult.status === "success" && testMediaResult.type === "audio" && (
+                             <audio controls src={testMediaResult.data.url} className="w-full mt-2" />
+                           )}
+
+                           {testMediaResult.status === "success" && testMediaResult.type !== "audio" && (!testMediaResult.data.hits || testMediaResult.data.hits.length === 0) && (
                              <div className="text-jarvis-text-muted text-xs font-mono">
                                No media results found for this query.
                              </div>
                            )}
 
-                           {testMediaResult.status === "success" && testMediaResult.data.hits && testMediaResult.data.hits.length > 0 && (
+                           {testMediaResult.status === "success" && testMediaResult.type !== "audio" && testMediaResult.data.hits && testMediaResult.data.hits.length > 0 && (
                              testMediaResult.type === "video" ? (
                                <video 
                                  controls 

@@ -1,0 +1,27 @@
+{"level":"info","message":"Jarvis TTS Agent started on port 4000","service":"tts-agent","timestamp":"2026-07-26T20:26:44.617Z"}
+{"level":"info","message":"Incoming request: POST /api/v1/tts/generate","service":"tts-agent","timestamp":"2026-07-26T20:27:03.679Z"}
+{"level":"warn","message":"ffmpeg not found, falling back to raw aiff","service":"tts-agent","timestamp":"2026-07-26T20:27:07.017Z"}
+{"level":"info","message":"Incoming request: GET /audio/294452b6-db9f-4bff-b36f-b534a258583a.mp3","service":"tts-agent","timestamp":"2026-07-26T20:27:07.043Z"}
+{"level":"info","message":"Jarvis TTS Agent started on port 4000","service":"tts-agent","timestamp":"2026-07-26T20:27:59.721Z"}
+{"level":"info","message":"Incoming request: POST /api/v1/tts/generate","service":"tts-agent","timestamp":"2026-07-26T20:30:04.297Z"}
+{"level":"warn","message":"ffmpeg not found, falling back to raw aiff","service":"tts-agent","timestamp":"2026-07-26T20:30:04.993Z"}
+{"level":"info","message":"Incoming request: GET /audio/f5c2c65d-07ea-4fb5-8de0-bd95867015db.mp3","service":"tts-agent","timestamp":"2026-07-26T20:30:05.012Z"}
+{"level":"info","message":"Jarvis TTS Agent started on port 4000","service":"tts-agent","timestamp":"2026-07-26T20:31:11.524Z"}
+{"level":"info","message":"Incoming request: POST /api/v1/tts/generate","service":"tts-agent","timestamp":"2026-07-26T20:31:18.117Z"}
+{"level":"info","message":"Incoming request: GET /audio/e50f61f5-4fed-498d-80f6-f877ebeac810.m4a","service":"tts-agent","timestamp":"2026-07-26T20:31:18.848Z"}
+{"level":"info","message":"Incoming request: GET /","service":"tts-agent","timestamp":"2026-07-26T20:33:04.918Z"}
+{"level":"info","message":"Incoming request: POST /api/v1/tts/generate","service":"tts-agent","timestamp":"2026-07-26T20:33:34.706Z"}
+{"level":"info","message":"Incoming request: GET /audio/f4073317-4bf5-49ac-84b5-97e6454d5dd0.m4a","service":"tts-agent","timestamp":"2026-07-26T20:33:35.418Z"}
+{"level":"info","message":"Jarvis TTS Agent started on port 4000","service":"tts-agent","timestamp":"2026-07-26T20:34:07.413Z"}
+{"level":"info","message":"Incoming request: POST /api/v1/tts/generate","service":"tts-agent","timestamp":"2026-07-26T20:34:12.918Z"}
+{"level":"info","message":"Incoming request: GET /audio/f4ec631c-823f-4791-a641-94fc18035baa.m4a","service":"tts-agent","timestamp":"2026-07-26T20:34:13.664Z"}
+{"level":"info","message":"Jarvis TTS Agent started on port 4000","service":"tts-agent","timestamp":"2026-07-26T20:35:00.100Z"}
+{"level":"info","message":"Incoming request: POST /api/v1/tts/generate","service":"tts-agent","timestamp":"2026-07-26T20:35:18.349Z"}
+{"level":"info","message":"Incoming request: GET /audio/e7032827-c11a-4c87-9dbc-2985f1bec355.m4a","service":"tts-agent","timestamp":"2026-07-26T20:35:19.086Z"}
+{"level":"info","message":"Incoming request: POST /api/v1/tts/generate","service":"tts-agent","timestamp":"2026-07-26T20:37:44.043Z"}
+{"level":"info","message":"Incoming request: GET /audio/674acc70-5165-4e5b-8526-b363cbb62e5e.m4a","service":"tts-agent","timestamp":"2026-07-26T20:37:44.817Z"}
+{"level":"info","message":"Incoming request: POST /api/v1/tts/generate","service":"tts-agent","timestamp":"2026-07-26T20:53:48.340Z"}
+{"level":"info","message":"Incoming request: GET /audio/a1930582-9d5b-465f-a244-9d6953987f9f.m4a","service":"tts-agent","timestamp":"2026-07-26T20:53:49.099Z"}
+{"level":"info","message":"Incoming request: POST /api/v1/tts/generate","service":"tts-agent","timestamp":"2026-07-26T20:58:48.945Z"}
+{"level":"info","message":"Incoming request: GET /audio/e460761d-b571-4d73-bd86-a038d0122c97.m4a","service":"tts-agent","timestamp":"2026-07-26T20:59:06.126Z"}
+{"level":"info","message":"Incoming request: GET /audio/e460761d-b571-4d73-bd86-a038d0122c97.m4a","service":"tts-agent","timestamp":"2026-07-26T20:59:12.037Z"}
