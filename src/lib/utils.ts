@@ -90,9 +90,6 @@ export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Safely parse JSON, handling unescaped control characters that Groq sometimes returns.
- */
 export function safeJsonParse<T>(text: string): T {
   let cleaned = text;
   // Strip markdown code fences if present
@@ -100,7 +97,13 @@ export function safeJsonParse<T>(text: string): T {
   if (fenceMatch) {
     cleaned = fenceMatch[1].trim();
   }
-  // Strip ALL control characters (including newlines/carriage returns) that break JSON parsing
-  cleaned = cleaned.replace(/[\x00-\x1F]/g, "");
-  return JSON.parse(cleaned);
+  
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    // If parsing fails due to unescaped control chars, replace them with spaces 
+    // instead of stripping them completely so we don't merge words together.
+    cleaned = cleaned.replace(/[\x00-\x1F]/g, " ");
+    return JSON.parse(cleaned);
+  }
 }

@@ -40,11 +40,16 @@ interface ParsedPost {
 function tryParsePost(text: string): ParsedPost | null {
   try {
     let cleaned = text.trim();
-    if (cleaned.startsWith("```")) {
-      cleaned = cleaned.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+    if (cleaned.toUpperCase().startsWith("APPROVED:")) {
+      cleaned = cleaned.replace(/^APPROVED:\s*/i, "").trim();
+    }
+    const startIdx = cleaned.indexOf("{");
+    const endIdx = cleaned.lastIndexOf("}");
+    if (startIdx !== -1 && endIdx !== -1) {
+      cleaned = cleaned.substring(startIdx, endIdx + 1);
     }
     const p = safeJsonParse(cleaned) as Record<string, unknown>;
-    if (p.caption) {
+    if (p && p.caption) {
       return {
         title: (p.title as string) || "",
         caption: p.caption as string,
@@ -120,8 +125,10 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasNavigatedRef = useRef(false);
   const [hasFailedOnce, setHasFailedOnce] = useState(false);
+  const revisionCountRef = useRef(0);
   const [loopFeedback, setLoopFeedback] = useState<string | null>(null);
 
   const [steps, setSteps] = useState<PipelineStep[]>([]);
@@ -199,8 +206,13 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
     setPost(null);
     setIsRunning(false);
     abortRef.current = null;
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
     hasNavigatedRef.current = false;
     setHasFailedOnce(false);
+    revisionCountRef.current = 0;
     setLoopFeedback(null);
   }, []);
 
@@ -228,11 +240,20 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
           return c;
         });
 
-        // Force JARVIS to provide a real critique on the first pass to demonstrate the loop
         const isJarvis = i === steps.length - 1;
-        const systemPrompt = isJarvis && !hasFailedOnce 
-          ? steps[i].systemPrompt + "\n\nCRITICAL INSTRUCTION: For this specific evaluation, you MUST reject the post to trigger our revision loop. Find a specific flaw (e.g., needs stronger hooks, better formatting, or a clearer CTA). Start your response exactly with 'REJECTED: [Agent Name] |' (where [Agent Name] is the exact name of the agent responsible for fixing the issue, e.g., 'Copywriter' or 'SEO Optimizer') followed by your detailed feedback."
-          : (isJarvis ? steps[i].systemPrompt + "\n\nCRITICAL INSTRUCTION: The post has been revised. You MUST approve it this time. Start your response with 'APPROVED:' followed by the final post." : steps[i].systemPrompt);
+        let systemPrompt = steps[i].systemPrompt;
+        
+        const jsonInstruction = "\n\nCRITICAL INSTRUCTION: Your output MUST be a valid JSON object containing the post with these exact keys: title, caption, hashtags (array), mediaIdeas (array), callToAction, platform, bestPostingTime. Output ONLY the raw JSON.";
+
+        if (isJarvis) {
+          if (revisionCountRef.current === 0) {
+            systemPrompt += "\n\nCRITICAL INSTRUCTION: Review the post carefully. If it is flawed, reject it by starting your response EXACTLY with 'REJECTED: [Agent Name] |' followed by detailed feedback. If it is perfect, start with 'APPROVED:' followed by the valid JSON post.";
+          } else {
+            systemPrompt += "\n\nCRITICAL INSTRUCTION: The post has been revised. You MUST approve it this time to prevent infinite loops. Start your response with 'APPROVED:' followed by the final valid JSON post.";
+          }
+        } else {
+          systemPrompt += jsonInstruction;
+        }
 
         // Inject JARVIS's previous feedback into EVERY agent in the loop until it reaches JARVIS again
         let contextToInject = "";
@@ -264,7 +285,7 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
 
         if (isJarvis) {
           const isRejected = result.toUpperCase().includes("REJECT");
-          if (isRejected || !hasFailedOnce) {
+          if (isRejected) {
             throw new Error(`VALIDATION_FAILED|||${result}`);
           }
         }
@@ -309,6 +330,7 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
         }
 
         setHasFailedOnce(true);
+        revisionCountRef.current += 1;
         setLoopFeedback(`Validation Failed. Rerouting back to ${steps[fallbackIndex]?.name || "agent"}.`);
         
         setSteps(s => {
@@ -321,8 +343,7 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
           return c;
         });
         
-        setIsRunning(false);
-        setTimeout(() => {
+        timeoutRef.current = setTimeout(() => {
           setSteps(s => {
             const c = [...s];
             for (let j = fallbackIndex; j < c.length; j++) {
@@ -392,6 +413,11 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
       abortRef.current.abort();
       abortRef.current = null;
     }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setIsRunning(false);
   };
 
   const copyCaption = async () => {
