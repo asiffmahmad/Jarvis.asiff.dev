@@ -12,7 +12,8 @@
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset --force",
     "db:backup": "echo 'Run manual backup via cloud provider.'",
-    "db:restore": "echo 'Run manual restore via cloud provider.'"
+    "db:restore": "echo 'Run manual restore via cloud provider.'",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
