@@ -94,7 +94,7 @@ export function useCarousel(initialId?: string) {
         const hasImg = s.elements.some(el => el.type === "image");
         const nextElements = hasImg 
           ? s.elements.map(el => el.type === "image" ? { ...el, content: url } : el)
-          : [...s.elements, { id: crypto.randomUUID(), type: "image", content: url }];
+          : [...s.elements, { id: crypto.randomUUID(), type: "image", content: url } as import("./types").CarouselElement];
         return {
           ...s,
           elements: nextElements,
