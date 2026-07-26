@@ -8,10 +8,10 @@ interface ModelEntry {
 const MODEL_TIERS: Record<TaskType, ModelEntry[]> = {
   fast: [
     { model: "deepseek/deepseek-chat", provider: "openrouter" },
-    { model: "mistralai/mistral-7b-instruct", provider: "openrouter" },
+    { model: "google/gemini-2.0-flash-lite-001", provider: "openrouter" },
   ],
   balanced: [
-    { model: "meta-llama/llama-3.1-8b-instruct", provider: "openrouter" },
+    { model: "meta-llama/llama-3.1-8b-instruct:free", provider: "openrouter" },
     { model: "google/gemini-2.0-flash-lite-001", provider: "openrouter" },
     { model: "llama-3.3-70b-versatile", provider: "groq" },
   ],

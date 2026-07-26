@@ -70,6 +70,7 @@ export class AIProviderFactory {
             { role: "user" as const, content: options.prompt }
           ],
           temperature: options.temperature ?? 0.7,
+          maxTokens: 2048,
           abortSignal: controller.signal,
         });
 

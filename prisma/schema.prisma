@@ -230,6 +230,7 @@ model Agent {
   model        String   
   temperature  Float    @default(0.7)
   apiProvider  String   @default("groq")
+  apiKey       String?  @db.Text
   usageLeft    Int      @default(1000)
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())

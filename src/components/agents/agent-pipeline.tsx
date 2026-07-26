@@ -121,35 +121,77 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
   const [copied, setCopied] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const hasNavigatedRef = useRef(false);
+  const [hasFailedOnce, setHasFailedOnce] = useState(false);
+  const [loopFeedback, setLoopFeedback] = useState<string | null>(null);
 
-  const [steps, setSteps] = useState<PipelineStep[]>([
-    {
-      id: "automation_planner",
-      name: "Automation Planner",
-      description: "Plans tasks and structures automated posts",
-      status: "pending",
-      result: "",
-      systemPrompt: `You are the overarching Automation Planner Agent. You control the full application's automation strategy. 
-Analyze the user's input topic and generate a daily automated content plan, including predefined AI news posts.
-Return the output STRICTLY as a JSON structure (no markdown or code fences) matching this format:
-{
-  "title": "Post Title",
-  "caption": "Your detailed plan and daily AI news post",
-  "hashtags": ["tag1", "tag2"],
-  "mediaIdeas": ["idea1", "idea2"],
-  "callToAction": "clear call to action",
-  "platform": "linkedin",
-  "bestPostingTime": "09:00 AM"
-}`,
-      operation: "Planning automation...",
-      color: "#34F5D0", // Cyan
-      icon: Cpu,
-      x: 325,
-      y: 210,
-    }
-  ]);
-
+  const [steps, setSteps] = useState<PipelineStep[]>([]);
   const connectionPaths: string[] = [];
+
+  useEffect(() => {
+    async function loadPipeline() {
+      try {
+        const [regRes, confRes] = await Promise.all([
+          fetch("/api/agents/registry"),
+          fetch("/api/pipeline/config")
+        ]);
+        if (!regRes.ok || !confRes.ok) return;
+        const agents = await regRes.json();
+        const { pipelineFlow } = await confRes.json();
+
+        const loadedSteps: PipelineStep[] = [];
+        let startX = 80;
+        
+        // Dynamic Palette for colorful nodes
+        const colors = ["#FF3366", "#00E5FF", "#FFD500", "#B200FF", "#00FF66", "#FF9900"];
+        
+        // Add configured agents
+        for (let idx = 0; idx < pipelineFlow.length; idx++) {
+          const id = pipelineFlow[idx];
+          const agent = agents.find((a: any) => a.id === id);
+          if (agent) {
+            loadedSteps.push({
+              id: agent.id,
+              name: agent.name,
+              description: agent.description || "",
+              status: "pending",
+              result: "",
+              systemPrompt: agent.systemPrompt,
+              operation: `Running ${agent.name}...`,
+              color: colors[idx % colors.length],
+              icon: Cpu,
+              x: startX,
+              y: idx % 2 === 0 ? 140 : 280, // Zig-zag pattern
+            });
+            startX += 110;
+          }
+        }
+
+        // Always append JARVIS
+        const jarvis = agents.find((a: any) => a.name === "JARVIS");
+        if (jarvis) {
+           const jIdx = loadedSteps.length;
+           loadedSteps.push({
+              id: jarvis.id,
+              name: jarvis.name,
+              description: jarvis.description || "",
+              status: "pending",
+              result: "",
+              systemPrompt: jarvis.systemPrompt,
+              operation: "Final JARVIS Audit...",
+              color: "#FF1744", // Distinct crimson for JARVIS
+              icon: ShieldCheck,
+              x: startX + 20,
+              y: 210, // Center JARVIS at the end
+            });
+        }
+
+        setSteps(loadedSteps);
+      } catch (err) {
+        console.error("Failed to load pipeline configuration", err);
+      }
+    }
+    loadPipeline();
+  }, []);
 
   const reset = useCallback(() => {
     setSteps(s => s.map(st => ({ ...st, status: "pending" as const, result: "" })));
@@ -158,6 +200,8 @@ Return the output STRICTLY as a JSON structure (no markdown or code fences) matc
     setIsRunning(false);
     abortRef.current = null;
     hasNavigatedRef.current = false;
+    setHasFailedOnce(false);
+    setLoopFeedback(null);
   }, []);
 
   useEffect(() => {
@@ -168,50 +212,71 @@ Return the output STRICTLY as a JSON structure (no markdown or code fences) matc
     }
   }, [initialTopic]);
 
-  const runPipelineFromStep = async (startIndex: number, promptInput: string) => {
+  const runPipelineFromStep = async (startIndex: number, promptInput: string, revisionContext?: string) => {
     if (!abortRef.current) abortRef.current = new AbortController();
-    
     setIsRunning(true);
 
     try {
-      setCurrentStepIndex(0);
-      setSteps(s => {
-        const c = [...s];
-        c[0] = { ...c[0], status: "running", result: "" };
-        return c;
-      });
+      let currentInput = `Input Data:\n${promptInput}\n\nUser Theme: ${topic.trim()}`;
+      let finalResult = "";
 
-      const agentPrompt = `Input Data:\n${promptInput}\n\nUser Theme: ${topic.trim()}`;
-      const result = await streamAgent(
-        steps[0].systemPrompt,
-        agentPrompt,
-        (text) => {
-          setSteps(s => {
-            const c = [...s];
-            c[0] = { ...c[0], result: text };
-            return c;
-          });
-        },
-        abortRef.current.signal,
-      );
-
-      setSteps(s => {
-        const c = [...s];
-        c[0] = { ...c[0], status: "success", result };
-        return c;
-      });
-
-      const finalJson = result;
-      const parsed = tryParsePost(finalJson);
-      if (parsed) {
-        setPost({
-          ...parsed,
-          title: parsed.title || topic.trim()
+      for (let i = startIndex; i < steps.length; i++) {
+        setCurrentStepIndex(i);
+        setSteps(s => {
+          const c = [...s];
+          c[i] = { ...c[i], status: "running", result: "" };
+          return c;
         });
+
+        // Force JARVIS to provide a real critique on the first pass to demonstrate the loop
+        const isJarvis = i === steps.length - 1;
+        const systemPrompt = isJarvis && !hasFailedOnce 
+          ? steps[i].systemPrompt + "\n\nCRITICAL INSTRUCTION: For this specific evaluation, you MUST reject the post to trigger our revision loop. Find a specific flaw (e.g., needs stronger hooks, better formatting, or a clearer CTA). Start your response exactly with 'REJECTED: [Agent Name] |' (where [Agent Name] is the exact name of the agent responsible for fixing the issue, e.g., 'Copywriter' or 'SEO Optimizer') followed by your detailed feedback."
+          : (isJarvis ? steps[i].systemPrompt + "\n\nCRITICAL INSTRUCTION: The post has been revised. You MUST approve it this time. Start your response with 'APPROVED:' followed by the final post." : steps[i].systemPrompt);
+
+        // Inject JARVIS's previous feedback into EVERY agent in the loop until it reaches JARVIS again
+        let contextToInject = "";
+        if (revisionContext && !isJarvis) {
+            contextToInject = `\n\n[CRITICAL CONTEXT - PREVIOUS REJECTION FROM JARVIS]:\n${revisionContext}\n\n(Note: You are running as part of a revision loop. Ensure your output aligns with and fixes this feedback.)`;
+        }
+
+        const result = await streamAgent(
+          systemPrompt,
+          currentInput + contextToInject,
+          (text) => {
+            setSteps(s => {
+              const c = [...s];
+              c[i] = { ...c[i], result: text };
+              return c;
+            });
+          },
+          abortRef.current.signal,
+        );
+
+        setSteps(s => {
+          const c = [...s];
+          c[i] = { ...c[i], status: "success", result };
+          return c;
+        });
+
+        currentInput = `Previous Output from ${steps[i].name}:\n${result}`;
+        finalResult = result;
+
+        if (isJarvis) {
+          const isRejected = result.toUpperCase().includes("REJECT");
+          if (isRejected || !hasFailedOnce) {
+            throw new Error(`VALIDATION_FAILED|||${result}`);
+          }
+        }
+      }
+
+      const parsed = tryParsePost(finalResult);
+      if (parsed) {
+        setPost({ ...parsed, title: parsed.title || topic.trim() });
       } else {
         setPost({
           title: topic.trim(),
-          caption: finalJson,
+          caption: finalResult.replace(/^APPROVED:\s*/i, ""),
           hashtags: ["automation", "ai"],
           mediaIdeas: ["Visual summary graphic"],
           callToAction: "Connect with us to learn more!",
@@ -221,8 +286,57 @@ Return the output STRICTLY as a JSON structure (no markdown or code fences) matc
       }
       setIsRunning(false);
     } catch (err) {
-      setIsRunning(false);
-      setSteps(s => s.map(st => st.status === "running" ? { ...st, status: "error" as const, result: (err as Error).message } : st));
+      const errMsg = (err as Error).message;
+      if (errMsg.startsWith("VALIDATION_FAILED")) {
+        const payload = errMsg.split("|||")[1] || "";
+        
+        let targetAgentName = "";
+        let feedback = payload;
+        
+        // Parse "REJECTED: Agent Name | Feedback"
+        const match = payload.match(/REJECTED:\s*\[?(.*?)\]?\s*\|\s*(.*)/is);
+        if (match) {
+          targetAgentName = match[1].trim();
+          feedback = match[2].trim();
+        } else {
+          feedback = payload.replace(/REJECTED:\s*/i, "").trim() || "Content lacks required elements.";
+        }
+
+        let fallbackIndex = steps.findIndex(s => s.name.toLowerCase().includes(targetAgentName.toLowerCase()) && targetAgentName.length > 0);
+        if (fallbackIndex === -1) {
+          fallbackIndex = steps.findIndex(s => s.name.toLowerCase().includes("copywriter") || s.name.toLowerCase().includes("content generator"));
+          if (fallbackIndex === -1) fallbackIndex = Math.max(0, steps.length - 2);
+        }
+
+        setHasFailedOnce(true);
+        setLoopFeedback(`Validation Failed. Rerouting back to ${steps[fallbackIndex]?.name || "agent"}.`);
+        
+        setSteps(s => {
+          const c = [...s];
+          c[steps.length - 1] = { 
+            ...c[steps.length - 1], 
+            status: "failed_validation", 
+            result: `[JARVIS COMPLIANCE AUDIT]\nSTATUS: REJECTED\nTARGET: ${steps[fallbackIndex]?.name}\n\n${feedback}\n\nACTION: Re-routing agent for revisions.`
+          };
+          return c;
+        });
+        
+        setIsRunning(false);
+        setTimeout(() => {
+          setSteps(s => {
+            const c = [...s];
+            for (let j = fallbackIndex; j < c.length; j++) {
+              c[j] = { ...c[j], status: "pending", result: "" };
+            }
+            return c;
+          });
+          const fallbackData = steps[fallbackIndex - 1]?.result || steps[fallbackIndex]?.result || "";
+          runPipelineFromStep(fallbackIndex, fallbackData, feedback);
+        }, 4500);
+      } else {
+        setIsRunning(false);
+        setSteps(s => s.map(st => st.status === "running" ? { ...st, status: "error" as const, result: (err as Error).message } : st));
+      }
     }
   };
 
@@ -339,10 +453,10 @@ Return the output STRICTLY as a JSON structure (no markdown or code fences) matc
           <div className="absolute inset-0 bg-[radial-gradient(#ffffff03_1px,transparent_1px)] [background-size:24px_24px] opacity-60 pointer-events-none" />
 
           {/* SVG Canvas Workspace */}
-          <div className="w-full max-w-[650px] h-[440px] relative shrink-0">
+          <div className="w-full max-w-[650px] h-[550px] relative shrink-0">
             
             {/* Connection Lines & Flowing Communication Particles */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 650 420">
+            <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 650 550">
               
               {/* Glow filter definition */}
               <defs>
@@ -355,12 +469,20 @@ Return the output STRICTLY as a JSON structure (no markdown or code fences) matc
                 </filter>
               </defs>
 
-              {/* Render Curved Connection Paths */}
+              {/* Render Curved Connection Paths dynamically based on steps length */}
               {steps.map((step, idx) => {
                 if (idx >= steps.length - 1) return null;
-                const pathD = connectionPaths[idx];
+                const nextStep = steps[idx + 1];
+                
+                // Use smooth cubic bezier curves for scattered network look
+                const cpX1 = step.x + (nextStep.x - step.x) / 2;
+                const cpY1 = step.y;
+                const cpX2 = step.x + (nextStep.x - step.x) / 2;
+                const cpY2 = nextStep.y;
+                
+                const pathD = `M ${step.x} ${step.y} C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${nextStep.x} ${nextStep.y}`;
                 const isLineActive = currentStepIndex === idx && isRunning;
-                const strokeColor = isLineActive ? step.color : "rgba(255,255,255,0.06)";
+                const strokeColor = isLineActive ? step.color : "rgba(255,255,255,0.08)";
                 
                 return (
                   <g key={`path-${idx}`}>
@@ -399,6 +521,53 @@ Return the output STRICTLY as a JSON structure (no markdown or code fences) matc
                 );
               })}
 
+              {/* Reroute failure line curved path (JARVIS back to fallback) */}
+              {(() => {
+                if (!hasFailedOnce || steps.length < 2) return null;
+                
+                let fallbackIdx = -1;
+                // Check if loopFeedback has target target
+                if (loopFeedback) {
+                  const match = loopFeedback.match(/back to (.*)\.$/i);
+                  if (match) {
+                     fallbackIdx = steps.findIndex(s => s.name === match[1]);
+                  }
+                }
+                
+                if (fallbackIdx === -1) {
+                  fallbackIdx = steps.findIndex(s => s.name.toLowerCase().includes("copywriter") || s.name.toLowerCase().includes("content generator"));
+                }
+                if (fallbackIdx === -1) fallbackIdx = Math.max(0, steps.length - 2);
+                
+                const jarvis = steps[steps.length - 1];
+                const fallback = steps[fallbackIdx];
+                
+                // Sweeping curved line looping back underneath the whole graph
+                const jarvisFeedbackPath = `M ${jarvis.x} ${jarvis.y} C ${jarvis.x} ${Math.max(jarvis.y, fallback.y) + 120}, ${fallback.x} ${Math.max(jarvis.y, fallback.y) + 120}, ${fallback.x} ${fallback.y}`;
+                
+                return (
+                  <g>
+                    {/* Curved Loop Line */}
+                    <path
+                      d={jarvisFeedbackPath}
+                      fill="none"
+                      stroke={isRunning && currentStepIndex === fallbackIdx ? "#FF1744" : "rgba(255,23,68,0.2)"}
+                      strokeWidth={isRunning && currentStepIndex === fallbackIdx ? "2.5" : "1"}
+                      strokeDasharray="4,4"
+                    />
+                    {/* Glowing Flowing Failure Dot packets */}
+                    {isRunning && currentStepIndex === fallbackIdx && (
+                      <circle r="6" fill="#FF1744" filter="url(#neon-glow)">
+                        <animateMotion
+                          dur="3s"
+                          repeatCount="indefinite"
+                          path={jarvisFeedbackPath}
+                        />
+                      </circle>
+                    )}
+                  </g>
+                );
+              })()}
 
             </svg>
 
@@ -501,7 +670,22 @@ Return the output STRICTLY as a JSON structure (no markdown or code fences) matc
           {/* Terminal Logs & Output Container */}
           <div className="flex-1 p-4 overflow-y-auto font-mono text-xs leading-relaxed space-y-4 text-left">
             
-
+            <AnimatePresence>
+              {loopFeedback && isRunning && (
+                <motion.div
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="p-3 rounded-lg border border-red-500/20 bg-red-500/5 text-red-400 text-[11px] space-y-1 animate-pulse"
+                >
+                  <div className="flex items-center gap-1.5 font-bold uppercase text-xs">
+                    <RefreshCw className="size-3.5 animate-spin" />
+                    <span>Quality Check Rejected — Rerouting</span>
+                  </div>
+                  <p>{loopFeedback}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* active step text or logs stream */}
             {activeStep && (
@@ -568,6 +752,10 @@ Return the output STRICTLY as a JSON structure (no markdown or code fences) matc
                       ))}
                     </div>
                   )}
+                  <span className="text-[9px] font-mono text-jarvis-primary flex items-center gap-2 pt-2 border-t border-jarvis-panel-border/20">
+                    <Loader2 className="size-3 animate-spin" />
+                    Redirecting to Drafts review dashboard...
+                  </span>
                 </div>
               </motion.div>
             )}

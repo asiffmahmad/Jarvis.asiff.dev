@@ -13,6 +13,7 @@ type Agent = {
   systemPrompt: string;
   model: string;
   apiProvider: string;
+  apiKey?: string | null;
   usageLeft: number;
   isActive: boolean;
 };
@@ -22,6 +23,8 @@ export default function AgentSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{success?: boolean, error?: string} | null>(null);
 
   // Form State
   const [formData, setFormData] = useState<Partial<Agent>>({});
@@ -51,20 +54,42 @@ export default function AgentSettingsPage() {
   const handleSelectAgent = (agent: Agent) => {
     setSelectedAgentId(agent.id);
     setFormData(agent);
+    setTestResult(null);
+  };
+
+  const handleCreateNew = () => {
+    setSelectedAgentId(null);
+    setFormData({
+      name: "New Agent",
+      description: "",
+      systemPrompt: "",
+      model: "gpt-4",
+      apiProvider: "groq",
+      apiKey: "",
+      usageLeft: 1000,
+      isActive: true
+    });
+    setTestResult(null);
   };
 
   const handleChange = (field: keyof Agent, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    if (field === "apiKey" || field === "apiProvider") {
+      setTestResult(null); // Reset test result if credentials change
+    }
   };
 
   const handleSave = async () => {
-    if (!selectedAgentId) return;
     setIsSaving(true);
     try {
+      const isNew = !selectedAgentId;
+      const method = isNew ? "POST" : "PATCH";
+      const payload = isNew ? formData : { id: selectedAgentId, ...formData };
+      
       const res = await fetch("/api/agents/registry", {
-        method: "PATCH",
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: selectedAgentId, ...formData })
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         await fetchAgents(); // refresh list
@@ -76,7 +101,36 @@ export default function AgentSettingsPage() {
     }
   };
 
-  const activeAgent = agents.find(a => a.id === selectedAgentId);
+  const handleTestConnection = async () => {
+    // Ping the global router instead of individual agent settings
+    const testProvider = "openrouter"; // We ping OpenRouter primarily to check internet out
+
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/agents/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          apiProvider: testProvider, 
+          apiKey: "", 
+          model: "router-test"
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTestResult({ success: true });
+      } else {
+        setTestResult({ error: data.error || "Connection failed" });
+      }
+    } catch (err) {
+      setTestResult({ error: "Network error occurred" });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const activeAgent = agents.find(a => a.id === selectedAgentId) || (!selectedAgentId ? formData : null);
 
   return (
     <AppLayout edgeToEdge>
@@ -88,9 +142,12 @@ export default function AgentSettingsPage() {
             <h1 className="font-heading text-lg font-bold tracking-widest text-jarvis-primary uppercase text-glow flex items-center gap-2">
               <Cpu className="size-5" /> Agent Registry
             </h1>
-            <p className="text-xs text-jarvis-text-muted mt-1 uppercase tracking-wider font-mono">
-              System Operations
-            </p>
+            <button 
+              onClick={handleCreateNew}
+              className="mt-4 w-full bg-jarvis-primary/10 hover:bg-jarvis-primary/20 text-jarvis-primary border border-jarvis-primary/30 px-4 py-2 rounded-lg transition-all text-xs font-bold uppercase tracking-widest"
+            >
+              + Create New Agent
+            </button>
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -117,7 +174,7 @@ export default function AgentSettingsPage() {
                     <div className={cn("size-2 rounded-full", agent.isActive ? "bg-[#34F5D0] shadow-[0_0_8px_#34F5D0]" : "bg-red-500")} />
                   </div>
                   <p className="text-[10px] text-jarvis-text-muted font-mono uppercase tracking-wider truncate">
-                    {agent.model} • {agent.apiProvider}
+                    Managed by JARVIS Router
                   </p>
                 </button>
               ))
@@ -134,50 +191,67 @@ export default function AgentSettingsPage() {
             <div className="max-w-4xl mx-auto p-8 space-y-8 relative z-10">
               
               <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-3xl font-heading font-bold text-white mb-2">{formData.name}</h2>
-                  <p className="text-sm text-jarvis-text-muted">{formData.description || "No description provided."}</p>
+                <div className="flex-1 mr-4">
+                  <input
+                    type="text"
+                    value={formData.name || ""}
+                    onChange={(e) => handleChange("name", e.target.value)}
+                    className="text-3xl font-heading font-bold text-white mb-2 bg-transparent border-b border-transparent hover:border-jarvis-panel-border focus:border-jarvis-primary outline-none transition-colors w-full"
+                    placeholder="Agent Name"
+                  />
+                  <input
+                    type="text"
+                    value={formData.description || ""}
+                    onChange={(e) => handleChange("description", e.target.value)}
+                    className="text-sm text-jarvis-text-muted bg-transparent border-b border-transparent hover:border-jarvis-panel-border focus:border-jarvis-primary outline-none transition-colors w-full"
+                    placeholder="Brief description..."
+                  />
                 </div>
                 <button 
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="flex items-center gap-2 bg-jarvis-primary/10 hover:bg-jarvis-primary/20 text-jarvis-primary border border-jarvis-primary/30 px-6 py-3 rounded-xl transition-all shadow-[0_0_15px_rgba(52,245,208,0.1)] font-bold uppercase text-xs tracking-widest disabled:opacity-50"
+                  className="flex items-center gap-2 bg-jarvis-primary/10 hover:bg-jarvis-primary/20 text-jarvis-primary border border-jarvis-primary/30 px-6 py-3 rounded-xl transition-all shadow-[0_0_15px_rgba(52,245,208,0.1)] font-bold uppercase text-xs tracking-widest disabled:opacity-50 shrink-0"
                 >
                   {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-                  Save Configuration
+                  {selectedAgentId ? "Save Config" : "Create Agent"}
                 </button>
               </div>
 
               {/* Status and Usage Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
-                {/* Connection Details */}
+                {/* Connection Details / System Check */}
                 <div className="glass-strong border border-jarvis-panel rounded-2xl p-6 relative overflow-hidden group">
                   <div className="absolute top-0 right-0 p-4 opacity-10">
                     <Key className="size-20" />
                   </div>
                   <h3 className="text-xs font-bold uppercase tracking-widest text-jarvis-text-muted mb-4 flex items-center gap-2">
-                    <Activity className="size-4" /> API Connection
+                    <Activity className="size-4" /> Global AI Routing Engine
                   </h3>
                   
                   <div className="space-y-4 relative z-10">
-                    <div>
-                      <label className="text-[10px] uppercase tracking-widest text-jarvis-text-muted block mb-1">Provider</label>
-                      <input 
-                        type="text" 
-                        value={formData.apiProvider || ""}
-                        onChange={(e) => handleChange("apiProvider", e.target.value)}
-                        className="w-full bg-jarvis-bg/50 border border-jarvis-panel-border rounded-lg px-3 py-2 text-sm focus:border-jarvis-primary/50 outline-none transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] uppercase tracking-widest text-jarvis-text-muted block mb-1">Model Engine</label>
-                      <input 
-                        type="text" 
-                        value={formData.model || ""}
-                        onChange={(e) => handleChange("model", e.target.value)}
-                        className="w-full bg-jarvis-bg/50 border border-jarvis-panel-border rounded-lg px-3 py-2 text-sm focus:border-jarvis-primary/50 outline-none transition-colors"
-                      />
+                    <p className="text-xs text-jarvis-text-muted leading-relaxed">
+                      This agent is powered by the central JARVIS Multi-Model Router. It automatically switches between Groq and OpenRouter's free tier (Llama 3.1 & Gemini) to ensure 100% uptime without requiring per-agent API keys.
+                    </p>
+                    
+                    <div className="flex items-center justify-between pt-4 border-t border-jarvis-panel-border">
+                      <button 
+                        onClick={handleTestConnection}
+                        disabled={isTesting}
+                        className="flex items-center gap-2 bg-jarvis-panel hover:bg-jarvis-panel/80 text-white text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-lg transition-colors disabled:opacity-50 border border-jarvis-panel-border"
+                      >
+                        {isTesting ? <Loader2 className="size-3 animate-spin" /> : <Activity className="size-3" />}
+                        Ping Engine Status
+                      </button>
+                      
+                      {testResult && (
+                        <div className={cn(
+                          "text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-md",
+                          testResult.success ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"
+                        )}>
+                          {testResult.success ? "Engine Online" : "Engine Offline"}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

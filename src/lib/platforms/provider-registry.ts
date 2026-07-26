@@ -30,6 +30,26 @@ export class ProviderRegistry {
         id: "x", name: "X (Twitter)", brandColor: "#000000", isAvailable: true,
         capabilities: { publishText: true, publishImage: true, publishCarousel: false, publishVideo: true, draftSupport: false, scheduling: true, analytics: true, comments: true, hashtags: true }
       },
+      {
+        id: "facebook", name: "Facebook", brandColor: "#1877F2", isAvailable: true,
+        capabilities: { publishText: true, publishImage: true, publishCarousel: true, publishVideo: true, draftSupport: false, scheduling: true, analytics: true, comments: true, hashtags: true }
+      },
+      {
+        id: "youtube", name: "YouTube", brandColor: "#FF0000", isAvailable: true,
+        capabilities: { publishText: false, publishImage: false, publishCarousel: false, publishVideo: true, draftSupport: true, scheduling: true, analytics: true, comments: true, hashtags: true }
+      },
+      {
+        id: "tiktok", name: "TikTok", brandColor: "#00f2fe", isAvailable: true,
+        capabilities: { publishText: false, publishImage: true, publishCarousel: true, publishVideo: true, draftSupport: true, scheduling: true, analytics: true, comments: true, hashtags: true }
+      },
+      {
+        id: "threads", name: "Threads", brandColor: "#000000", isAvailable: true,
+        capabilities: { publishText: true, publishImage: true, publishCarousel: true, publishVideo: true, draftSupport: false, scheduling: true, analytics: false, comments: true, hashtags: true }
+      },
+      {
+        id: "pinterest", name: "Pinterest", brandColor: "#E60023", isAvailable: true,
+        capabilities: { publishText: false, publishImage: true, publishCarousel: true, publishVideo: true, draftSupport: false, scheduling: true, analytics: true, comments: false, hashtags: true }
+      },
     ];
 
     defaultProviders.forEach(p => this.providers.set(p.id, p));

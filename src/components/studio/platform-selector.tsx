@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, Briefcase, MessageSquare, Video, Users } from "lucide-react";
+import { Camera, Briefcase, MessageSquare, Video, Users, Music, MessageCircle, Pin } from "lucide-react";
 import type { Platform } from "@/lib/studio/types";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +16,9 @@ export function PlatformSelector({ activePlatform, onChange }: PlatformSelectorP
     { id: "instagram", icon: Camera, label: "Instagram" },
     { id: "facebook", icon: Users, label: "Facebook" },
     { id: "youtube", icon: Video, label: "YouTube" },
+    { id: "tiktok", icon: Music, label: "TikTok" },
+    { id: "threads", icon: MessageCircle, label: "Threads" },
+    { id: "pinterest", icon: Pin, label: "Pinterest" },
   ];
 
   return (

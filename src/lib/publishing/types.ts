@@ -1,4 +1,4 @@
-export type Platform = "instagram" | "linkedin" | "x" | "facebook" | "threads" | "youtube" | "tiktok";
+export type Platform = "instagram" | "linkedin" | "x" | "facebook" | "threads" | "youtube" | "tiktok" | "pinterest";
 
 export type ContentTone = "professional" | "casual" | "inspirational" | "humorous" | "educational" | "controversial";
 
