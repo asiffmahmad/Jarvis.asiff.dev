@@ -112,6 +112,62 @@ export async function POST(req: Request) {
           ? "Successfully authenticated with YouTube Data API." 
           : "Missing YouTube API Key.";
         break;
+      case "gmail": {
+        const clientConfigured = !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET;
+        if (!clientConfigured) {
+          isConnected = false;
+          message = "Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET in .env file.";
+        } else {
+          try {
+            const prisma = (await import("@/lib/db/prisma")).default;
+            const account = await prisma.platformAccount.findFirst({
+              where: { platformId: "gmail" },
+            });
+
+            if (!account) {
+              isConnected = false;
+              message = "No Google session token stored in the database. Please log out and sign back in using the 'Sign in with Google' button.";
+            } else {
+              // Try querying Gmail API profile using the saved token (or refresh it)
+              const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({
+                  client_id: process.env.GOOGLE_CLIENT_ID || "",
+                  client_secret: process.env.GOOGLE_CLIENT_SECRET || "",
+                  refresh_token: account.refreshToken || "",
+                  grant_type: "refresh_token",
+                }),
+              });
+
+              if (tokenRes.ok) {
+                const tokenData = await tokenRes.json();
+                const freshToken = tokenData.access_token;
+                
+                const profileRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
+                  headers: { Authorization: `Bearer ${freshToken}` }
+                });
+                
+                if (profileRes.ok) {
+                  const profile = await profileRes.json();
+                  isConnected = true;
+                  message = `Successfully authenticated with Gmail for ${profile.emailAddress}.`;
+                } else {
+                  isConnected = false;
+                  message = "Failed to connect to Gmail profile API using stored Google tokens.";
+                }
+              } else {
+                isConnected = false;
+                message = "Stored Google token is expired, and attempt to refresh using GOOGLE_CLIENT_SECRET failed.";
+              }
+            }
+          } catch (err: any) {
+            isConnected = false;
+            message = `Gmail connection test failed: ${err.message}`;
+          }
+        }
+        break;
+      }
       default:
         message = `Platform ${platformId} connection testing is not implemented yet.`;
         break;

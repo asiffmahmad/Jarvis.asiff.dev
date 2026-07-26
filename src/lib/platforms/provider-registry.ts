@@ -50,6 +50,10 @@ export class ProviderRegistry {
         id: "pinterest", name: "Pinterest", brandColor: "#E60023", isAvailable: true,
         capabilities: { publishText: false, publishImage: true, publishCarousel: true, publishVideo: true, draftSupport: false, scheduling: true, analytics: true, comments: false, hashtags: true }
       },
+      {
+        id: "gmail", name: "Gmail/Google", brandColor: "#EA4335", isAvailable: true,
+        capabilities: { publishText: true, publishImage: false, publishCarousel: false, publishVideo: false, draftSupport: false, scheduling: true, analytics: false, comments: false, hashtags: false }
+      },
     ];
 
     defaultProviders.forEach(p => this.providers.set(p.id, p));

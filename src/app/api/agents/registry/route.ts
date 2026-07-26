@@ -43,6 +43,25 @@ export async function GET() {
       `;
       agents = await prisma.$queryRaw`SELECT * FROM Agent`;
     }
+
+    // Auto-seed Email Expense Agent if it doesn't exist
+    if (!agents.find(a => a.name === "Email Expense Agent")) {
+      await prisma.$executeRaw`
+        INSERT INTO Agent (id, name, description, systemPrompt, model, apiProvider, usageLeft, isActive, updatedAt)
+        VALUES (
+          ${Math.random().toString(36).substring(7)},
+          'Email Expense Agent',
+          'Analyzes transaction statements and logs expenses (Axis, HDFC, invoices).',
+          'You are the Email Expense Agent. Your task is to analyze invoice, receipt, debit, and credit bank alert emails and extract amount, currency, merchant, category, and date.',
+          'google/gemma-2-27b-it',
+          'nvidia',
+          1000,
+          1,
+          NOW()
+        )
+      `;
+      agents = await prisma.$queryRaw`SELECT * FROM Agent`;
+    }
     
     return NextResponse.json(agents);
   } catch (error: any) {

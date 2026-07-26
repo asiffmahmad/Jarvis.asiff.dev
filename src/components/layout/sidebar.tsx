@@ -24,6 +24,7 @@ import {
   BookOpen,
   Sliders,
   Route,
+  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
@@ -39,6 +40,7 @@ const mainNavItems = [
   { id: "agents", label: "AI Agents", icon: Bot, href: "/agents" },
   { id: "agent-settings", label: "Agent Settings", icon: Sliders, href: "/agents/settings" },
   { id: "pipeline-settings", label: "Pipeline Config", icon: Route, href: "/agents/pipeline" },
+  { id: "expenses", label: "Expense Agent", icon: Receipt, href: "/expenses" },
   { id: "scheduler", label: "Schedule", icon: CalendarDays, href: "/scheduler" },
   { id: "platforms", label: "Platforms", icon: Share2, href: "/platforms" },
   { id: "settings", label: "Settings", icon: Settings, href: "/settings" },

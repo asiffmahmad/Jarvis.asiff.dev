@@ -15,7 +15,7 @@ export default function MissionControlPage() {
       <div className="flex h-full w-full bg-jarvis-bg overflow-hidden text-jarvis-text selection:bg-jarvis-primary/30">
         
         {/* 1. Left Telemetry Panel */}
-        <DashboardLeftPanel />
+        {/* <DashboardLeftPanel /> */}
 
         {/* 2. Center Canvas (The AI Core) */}
         <main className="flex-[2] relative h-full flex flex-col items-center justify-center bg-jarvis-bg-deepest/50">
@@ -31,7 +31,7 @@ export default function MissionControlPage() {
           <AICoreVisualization onSelectAgent={setSelectedAgent} selectedAgent={selectedAgent} />
 
           {/* 4. Bottom Console */}
-          <DashboardConsole />
+          {/* <DashboardConsole /> */}
         </main>
 
       {/* 3. Right Inspector Panel */}

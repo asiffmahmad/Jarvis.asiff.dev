@@ -8,16 +8,16 @@ interface ModelEntry {
 const MODEL_TIERS: Record<TaskType, ModelEntry[]> = {
   fast: [
     { model: "deepseek/deepseek-chat", provider: "openrouter" },
-    { model: "google/gemini-2.0-flash-lite-preview-02-05:free", provider: "openrouter" },
+    { model: "google/gemini-2.5-flash:free", provider: "openrouter" },
   ],
   balanced: [
     { model: "meta-llama/llama-3.1-8b-instruct:free", provider: "openrouter" },
-    { model: "google/gemma-4-31b-it", provider: "nvidia" },
-    { model: "google/gemini-2.0-flash-lite-preview-02-05:free", provider: "openrouter" },
+    { model: "google/gemma-2-27b-it", provider: "nvidia" },
+    { model: "google/gemini-2.5-flash:free", provider: "openrouter" },
     { model: "llama-3.3-70b-versatile", provider: "groq" },
   ],
   powerful: [
-    { model: "google/gemma-4-31b-it", provider: "nvidia" },
+    { model: "google/gemma-2-27b-it", provider: "nvidia" },
     { model: "openai/gpt-4o", provider: "openrouter" },
     { model: "meta-llama/llama-3.1-405b", provider: "openrouter" },
     { model: "claude-3.5-sonnet", provider: "openrouter" },

@@ -41,13 +41,24 @@ const connectionGuides: Record<string, { steps: string[]; docsUrl: string }> = {
       "Generate Access Token and Secret for your account"
     ],
     docsUrl: "https://developer.x.com/en/docs/twitter-api"
+  },
+  gmail: {
+    steps: [
+      "Ensure you have configured GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file",
+      "Sign out of the Admin panel using the bottom left avatar profile card",
+      "Log back in using the 'Sign in with Google' button",
+      "This will automatically save and link your Gmail OAuth session to the database",
+      "The automated background Email Agent will now monitor your inbox for billing updates"
+    ],
+    docsUrl: "https://developers.google.com/gmail/api/reference/rest"
   }
 };
 
 const platformInstructions: Record<string, string> = {
   linkedin: "Share professional content, articles, and industry insights on LinkedIn. Connect your LinkedIn account to publish posts directly.",
   instagram: "Share visual content, stories, and carousels on Instagram. Connect your Instagram Business or Creator account.",
-  x: "Share short-form content, threads, and engage with your audience on X (Twitter)."
+  x: "Share short-form content, threads, and engage with your audience on X (Twitter).",
+  gmail: "Analyze invoice and receipt emails, extracting transaction totals and populating your expense pivot report automatically."
 };
 
 export function PlatformsCenterPanel({ state }: CenterPanelProps) {

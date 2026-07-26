@@ -12,6 +12,7 @@ export async function GET() {
     youtube: !!process.env.YOUTUBE_API_KEY,
     tiktok: false,
     pinterest: false,
+    gmail: !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET,
   };
 
   return NextResponse.json(status);

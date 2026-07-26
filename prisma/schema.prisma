@@ -312,3 +312,16 @@ model CalendarEvent {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+model Expense {
+  id              String   @id @default(cuid())
+  amount          Float
+  currency        String   @default("USD")
+  merchant        String
+  category        String
+  date            DateTime
+  rawEmailSubject String?
+  rawEmailBody    String?  @db.Text
+  createdAt       DateTime @default(now())
+}
+

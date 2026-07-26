@@ -35,9 +35,12 @@ export function AICoreVisualization({ onSelectAgent, selectedAgent }: AICoreProp
   const [wave, setWave] = useState<number[]>([20, 40, 80, 40, 20, 60, 90, 50, 30, 70]);
 
   useEffect(() => {
-    fetch("/api/agents/registry")
+    fetch(`/api/agents/registry?t=${Date.now()}`, { cache: "no-store" })
       .then(r => r.json())
-      .then((data: Agent[]) => setAgents(data.filter(a => a.isActive)))
+      .then((data: Agent[]) => {
+        // Map isActive to boolean in case database returns 1/0 (tinyint)
+        setAgents(data.filter(a => a.isActive === true || String(a.isActive) === "1" || String(a.isActive) === "true"));
+      })
       .catch(console.error);
 
     // Terminal log generator
@@ -101,6 +104,7 @@ export function AICoreVisualization({ onSelectAgent, selectedAgent }: AICoreProp
       </div>
 
       {/* Left HUD: Network Waveform */}
+      {/*
       <div className="absolute left-10 top-1/2 -translate-y-1/2 w-48 p-4 rounded-xl bg-black/40 border border-[#00E5FF]/20 backdrop-blur-md z-30 pointer-events-none">
         <div className="flex items-center gap-2 mb-3">
           <Activity className="size-4 text-[#00E5FF]" />
@@ -116,8 +120,10 @@ export function AICoreVisualization({ onSelectAgent, selectedAgent }: AICoreProp
           <span className="text-[9px] text-[#00E5FF]">{(wave[0] * 12).toFixed(1)} GB/s</span>
         </div>
       </div>
+      */}
 
       {/* Right HUD: Live Terminal */}
+      {/*
       <div className="absolute right-10 top-1/2 -translate-y-1/2 w-64 p-4 rounded-xl bg-black/40 border border-[#FF9900]/20 backdrop-blur-md z-30 pointer-events-none shadow-[0_0_20px_rgba(255,153,0,0.05)]">
         <div className="flex items-center gap-2 mb-3">
           <Terminal className="size-4 text-[#FF9900]" />
@@ -131,6 +137,7 @@ export function AICoreVisualization({ onSelectAgent, selectedAgent }: AICoreProp
           ))}
         </div>
       </div>
+      */}
 
       {/* --- HOLOGRAPHIC DATA RINGS --- */}
       

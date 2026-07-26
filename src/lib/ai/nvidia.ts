@@ -18,7 +18,7 @@ interface NvidiaResponse {
 export class NvidiaProvider implements AIProvider {
   readonly id = "nvidia";
 
-  private defaultModel = "google/gemma-4-31b-it";
+  private defaultModel = "google/gemma-2-27b-it";
 
   getModel(config?: Partial<AIProviderConfig>) {
     const apiKey = config?.apiKey || serverEnv.nvidiaApiKey;

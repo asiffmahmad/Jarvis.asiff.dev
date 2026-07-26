@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import type { ScheduledJob, JobLog } from "@/lib/scheduler/types";
 import type { SchedulePostRequest } from "@/lib/publishing/types";
+import { POST as analyzePOST } from "../../expenses/analyze/route";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,154 @@ function serializeJobDetails(payload: any, logs: any[], retryConfig: any, errorR
   return JSON.stringify({ payload, logs, retryConfig, errorReason });
 }
 
+// OAuth Helper to get and refresh Gmail access tokens dynamically from the database
+async function getFreshGmailAccessToken() {
+  const prisma = (await import("@/lib/db/prisma")).default;
+  const account = await prisma.platformAccount.findFirst({
+    where: { platformId: "gmail" },
+  });
+
+  if (!account) {
+    throw new Error("No Gmail account connected in the database.");
+  }
+
+  if (account.expiresAt && account.expiresAt.getTime() > Date.now() + 60000) {
+    return account.accessToken;
+  }
+
+  if (!account.refreshToken) {
+    throw new Error("Gmail token is expired and no refresh token is available.");
+  }
+
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID || "",
+      client_secret: process.env.GOOGLE_CLIENT_SECRET || "",
+      refresh_token: account.refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to refresh Google access token: ${errText}`);
+  }
+
+  const data = await res.json();
+  const newAccessToken = data.access_token;
+  const newExpiresAt = new Date(Date.now() + (data.expires_in || 3600) * 1000);
+
+  await prisma.platformAccount.update({
+    where: { id: account.id },
+    data: {
+      accessToken: newAccessToken,
+      expiresAt: newExpiresAt,
+    },
+  });
+
+  return newAccessToken;
+}
+
+// Background Gmail poll logic
+async function executeEmailPollJob(jobId: string, parsedLogs: any[]) {
+  try {
+    const token = await getFreshGmailAccessToken();
+    const query = "subject:(receipt OR invoice OR bill OR billing OR payment OR order OR subscription OR charge OR axis OR hdfc OR debit OR credit OR credited OR transaction)";
+    const listRes = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=30&q=${encodeURIComponent(query)}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    if (!listRes.ok) {
+      throw new Error(`Failed to query Gmail API: ${listRes.statusText}`);
+    }
+
+    const listData = await listRes.json();
+    const messages = listData.messages || [];
+
+    if (messages.length === 0) {
+      parsedLogs.push({
+        id: `log_${Date.now()}`,
+        jobId,
+        timestamp: new Date(),
+        level: "INFO",
+        message: "No matching receipt/invoice emails found in Gmail inbox.",
+      });
+      return;
+    }
+
+    let importedCount = 0;
+    const prisma = (await import("@/lib/db/prisma")).default;
+
+    for (const msgRef of messages) {
+      const msgRes = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgRef.id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!msgRes.ok) continue;
+      const message = await msgRes.json();
+
+      const headers = message.payload?.headers || [];
+      const subjectHeader = headers.find((h: any) => h.name?.toLowerCase() === "subject");
+      const subject = subjectHeader ? subjectHeader.value : "No Subject";
+
+      const existing = await prisma.expense.findFirst({
+        where: { rawEmailSubject: subject },
+      });
+      if (existing) continue;
+
+      let bodyText = message.snippet || "";
+      const parts = message.payload?.parts;
+      if (parts && parts.length > 0) {
+        const textPart = parts.find((p: any) => p.mimeType === "text/plain");
+        if (textPart && textPart.body?.data) {
+          bodyText = Buffer.from(textPart.body.data, "base64").toString("utf-8");
+        }
+      } else if (message.payload?.body?.data) {
+        bodyText = Buffer.from(message.payload.body.data, "base64").toString("utf-8");
+      }
+
+      const mockReq = new Request("http://127.0.0.1/api/expenses/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject, body: bodyText }),
+      });
+      const analyzeRes = await analyzePOST(mockReq);
+
+      if (analyzeRes.ok) {
+        const analyzeData = await analyzeRes.json();
+        if (analyzeData.isExpense) {
+          importedCount++;
+        }
+      }
+    }
+
+    parsedLogs.push({
+      id: `log_${Date.now()}`,
+      jobId,
+      timestamp: new Date(),
+      level: "INFO",
+      message: `Gmail background check complete. Checked ${messages.length} messages, imported ${importedCount} new expenses.`,
+    });
+  } catch (error: any) {
+    parsedLogs.push({
+      id: `log_${Date.now()}`,
+      jobId,
+      timestamp: new Date(),
+      level: "ERROR",
+      message: `Gmail background check failed: ${error.message}`,
+    });
+    throw error;
+  }
+}
+
 // Background executor for due scheduled jobs
 async function executeDueJobs() {
   try {
@@ -75,19 +224,22 @@ async function executeDueJobs() {
           message: "Starting scheduled job execution...",
         });
 
-        // 2. Publish to platform
-        const payload = parsed.payload as any;
-        const platform = payload.platform;
-        
-        parsed.logs.push({
-          id: `log_${Date.now()}`,
-          jobId: job.id,
-          timestamp: new Date(),
-          level: "INFO",
-          message: `Posting draft content to target account: ${payload.accountId || "Default Account"} on ${platform}.`,
-        });
+        // 2. Execute job based on type
+        if (job.type === "email_poll") {
+          await executeEmailPollJob(job.id, parsed.logs);
+        } else {
+          const payload = parsed.payload as any;
+          const platform = payload.platform;
+          
+          parsed.logs.push({
+            id: `log_${Date.now()}`,
+            jobId: job.id,
+            timestamp: new Date(),
+            level: "INFO",
+            message: `Posting draft content to target account: ${payload.accountId || "Default Account"} on ${platform}.`,
+          });
 
-        if (platform === "x") {
+          if (platform === "x") {
           // Verify environment variables for X
           const appKey = process.env.X_API_KEY;
           const appSecret = process.env.X_API_SECRET;
@@ -195,6 +347,7 @@ async function executeDueJobs() {
             level: "INFO",
             message: `Successfully published content to ${platform || "social media platform"}. (Simulated)`,
           });
+        }
         }
 
         // 3. Update status to SUCCESS
@@ -380,16 +533,19 @@ export async function PUT(req: Request) {
         // Execute immediately in background
         setTimeout(async () => {
           try {
-            const payload = parsed.payload as any;
-            const platform = payload.platform;
-            
-            parsed.logs.push({
-              id: `log_${Date.now()}`,
-              jobId: row.id,
-              timestamp: new Date(),
-              level: "INFO",
-              message: `Posting draft content to target account: ${payload.accountId || "Default Account"} on ${platform}.`,
-            });
+            if (row.type === "email_poll") {
+              await executeEmailPollJob(row.id, parsed.logs);
+            } else {
+              const payload = parsed.payload as any;
+              const platform = payload.platform;
+              
+              parsed.logs.push({
+                id: `log_${Date.now()}`,
+                jobId: row.id,
+                timestamp: new Date(),
+                level: "INFO",
+                message: `Posting draft content to target account: ${payload.accountId || "Default Account"} on ${platform}.`,
+              });
             
             if (platform === "x") {
               const appKey = process.env.X_API_KEY;
@@ -496,6 +652,7 @@ export async function PUT(req: Request) {
                 level: "INFO",
                 message: `Successfully published content to ${platform || "social media platform"}. (Simulated)`,
               });
+             }
             }
             
             await prisma.scheduleJob.update({
