@@ -116,6 +116,76 @@ async function executeDueJobs() {
             level: "INFO",
             message: `Successfully published tweet! ID: ${tweetRes.data.id}`,
           });
+        } else if (platform === "linkedin") {
+          const token = process.env.LINKEDIN_ACCESS_TOKEN;
+          if (!token) {
+            throw new Error("Missing LINKEDIN_ACCESS_TOKEN in environment configuration.");
+          }
+
+          // 1. Get URN
+          let personId = "";
+          const meRes = await fetch("https://api.linkedin.com/v2/me", {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          if (meRes.ok) {
+            const meData = await meRes.json();
+            personId = meData.id;
+          } else {
+            const userinfoRes = await fetch("https://api.linkedin.com/v2/userinfo", {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!userinfoRes.ok) {
+              throw new Error(`LinkedIn authentication failed: ${userinfoRes.statusText}`);
+            }
+            const userinfoData = await userinfoRes.json();
+            personId = userinfoData.sub;
+          }
+
+          if (!personId) {
+            throw new Error("Could not retrieve LinkedIn profile ID.");
+          }
+
+          // 2. Post Share
+          const postText = payload.post?.caption || payload.post?.content || "Automated post from JARVIS";
+          const shareRes = await fetch("https://api.linkedin.com/v2/ugcPosts", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "X-Restli-Protocol-Version": "2.0.0",
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              author: `urn:li:person:${personId}`,
+              lifecycleState: "PUBLISHED",
+              specificContent: {
+                "com.linkedin.ugc.ShareContent": {
+                  "shareCommentary": {
+                    "text": postText
+                  },
+                  "shareMediaCategory": "NONE"
+                }
+              },
+              visibility: {
+                "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
+              }
+            })
+          });
+
+          if (!shareRes.ok) {
+            const errData = await shareRes.json().catch(() => ({}));
+            throw new Error(`LinkedIn share failed: ${errData.message || shareRes.statusText}`);
+          }
+
+          const shareData = await shareRes.json();
+
+          parsed.logs.push({
+            id: `log_${Date.now()}`,
+            jobId: job.id,
+            timestamp: new Date(),
+            level: "INFO",
+            message: `Successfully published to LinkedIn! Share URN: ${shareData.id}`,
+          });
         } else {
           // Simulate for other platforms
           parsed.logs.push({
@@ -347,6 +417,76 @@ export async function PUT(req: Request) {
                 timestamp: new Date(),
                 level: "INFO",
                 message: `Successfully published tweet! ID: ${tweetRes.data.id}`,
+              });
+            } else if (platform === "linkedin") {
+              const token = process.env.LINKEDIN_ACCESS_TOKEN;
+              if (!token) {
+                throw new Error("Missing LINKEDIN_ACCESS_TOKEN in environment configuration.");
+              }
+
+              // 1. Get URN
+              let personId = "";
+              const meRes = await fetch("https://api.linkedin.com/v2/me", {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              
+              if (meRes.ok) {
+                const meData = await meRes.json();
+                personId = meData.id;
+              } else {
+                const userinfoRes = await fetch("https://api.linkedin.com/v2/userinfo", {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!userinfoRes.ok) {
+                  throw new Error(`LinkedIn authentication failed: ${userinfoRes.statusText}`);
+                }
+                const userinfoData = await userinfoRes.json();
+                personId = userinfoData.sub;
+              }
+
+              if (!personId) {
+                throw new Error("Could not retrieve LinkedIn profile ID.");
+              }
+
+              // 2. Post Share
+              const postText = payload.post?.caption || payload.post?.content || "Automated post from JARVIS";
+              const shareRes = await fetch("https://api.linkedin.com/v2/ugcPosts", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "X-Restli-Protocol-Version": "2.0.0",
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  author: `urn:li:person:${personId}`,
+                  lifecycleState: "PUBLISHED",
+                  specificContent: {
+                    "com.linkedin.ugc.ShareContent": {
+                      "shareCommentary": {
+                        "text": postText
+                      },
+                      "shareMediaCategory": "NONE"
+                    }
+                  },
+                  visibility: {
+                    "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
+                  }
+                })
+              });
+
+              if (!shareRes.ok) {
+                const errData = await shareRes.json().catch(() => ({}));
+                throw new Error(`LinkedIn share failed: ${errData.message || shareRes.statusText}`);
+              }
+
+              const shareData = await shareRes.json();
+
+              parsed.logs.push({
+                id: `log_${Date.now()}`,
+                jobId: row.id,
+                timestamp: new Date(),
+                level: "INFO",
+                message: `Successfully published to LinkedIn! Share URN: ${shareData.id}`,
               });
             } else {
               parsed.logs.push({

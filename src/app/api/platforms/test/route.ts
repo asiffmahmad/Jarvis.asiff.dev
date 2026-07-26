@@ -58,12 +58,42 @@ export async function POST(req: Request) {
         }
         break;
       }
-      case "linkedin":
-        isConnected = !!process.env.LINKEDIN_CLIENT_ID && !!process.env.LINKEDIN_CLIENT_SECRET;
-        message = isConnected 
-          ? "Successfully authenticated with LinkedIn." 
-          : "Missing LinkedIn credentials in environment configuration.";
+      case "linkedin": {
+        const token = process.env.LINKEDIN_ACCESS_TOKEN;
+        if (!token) {
+          isConnected = false;
+          message = "Missing LinkedIn Access Token in environment configuration.";
+        } else {
+          try {
+            // Modern LinkedIn UserInfo endpoint
+            const res = await fetch("https://api.linkedin.com/v2/userinfo", {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (res.ok && data.sub) {
+              isConnected = true;
+              message = `Successfully authenticated with LinkedIn as ${data.name || (data.given_name + " " + data.family_name)}.`;
+            } else {
+              // Try legacy /v2/me endpoint
+              const meRes = await fetch("https://api.linkedin.com/v2/me", {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              const meData = await meRes.json();
+              if (meRes.ok && meData.id) {
+                isConnected = true;
+                message = `Successfully authenticated with LinkedIn. (Profile ID: ${meData.id})`;
+              } else {
+                isConnected = false;
+                message = `LinkedIn authentication failed: ${data.message || meData.message || "Invalid Access Token"}`;
+              }
+            }
+          } catch (err: any) {
+            isConnected = false;
+            message = `Failed to connect to LinkedIn API: ${err.message}`;
+          }
+        }
         break;
+      }
       case "instagram":
         isConnected = !!process.env.INSTAGRAM_ACCESS_TOKEN;
         message = isConnected 

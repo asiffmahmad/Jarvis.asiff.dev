@@ -19,9 +19,21 @@ export async function GET() {
     }));
 
     if (parsedAccounts.length === 0) {
-      // Inject dummy accounts so the user can test the scheduling feature
+      const hasLinkedIn = !!process.env.LINKEDIN_ACCESS_TOKEN;
+      if (hasLinkedIn) {
+        parsedAccounts.push({
+          id: "acc_li_real",
+          platformId: "linkedin",
+          accountName: "My LinkedIn Account",
+          handle: "@mylinkedin",
+          avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=realli",
+          status: "active"
+        });
+      } else {
+        parsedAccounts.push({ id: "acc_li_1", platformId: "linkedin", accountName: "Tony Stark", handle: "@ironman", avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=tony", status: "active" });
+      }
+
       parsedAccounts.push(
-        { id: "acc_li_1", platformId: "linkedin", accountName: "Tony Stark", handle: "@ironman", avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=tony", status: "active" },
         { id: "acc_ig_1", platformId: "instagram", accountName: "Stark Industries", handle: "@starkindustries", avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=stark", status: "active" }
       );
       
