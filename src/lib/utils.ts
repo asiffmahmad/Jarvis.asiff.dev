@@ -96,6 +96,27 @@ export function safeJsonParse<T>(text: string): T {
   const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) {
     cleaned = fenceMatch[1].trim();
+  } else {
+    // If no code fence, try to extract from the first { or [ to the last } or ]
+    const firstBrace = cleaned.indexOf("{");
+    const lastBrace = cleaned.lastIndexOf("}");
+    const firstBracket = cleaned.indexOf("[");
+    const lastBracket = cleaned.lastIndexOf("]");
+    
+    let startIdx = -1;
+    let endIdx = -1;
+    
+    if (firstBrace !== -1 && lastBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+      startIdx = firstBrace;
+      endIdx = lastBrace;
+    } else if (firstBracket !== -1 && lastBracket !== -1) {
+      startIdx = firstBracket;
+      endIdx = lastBracket;
+    }
+    
+    if (startIdx !== -1 && endIdx !== -1) {
+      cleaned = cleaned.substring(startIdx, endIdx + 1);
+    }
   }
   
   try {

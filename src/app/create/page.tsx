@@ -222,7 +222,7 @@ export default function CreatePage() {
 
   const accountsForPlatform = useMemo(() => {
     if (!post) return [];
-    return allAccounts.filter(a => a.platformId === post.platform);
+    return allAccounts.filter(a => a.platformId === post.platform.toLowerCase());
   }, [allAccounts, post]);
 
   const selectedAccount = useMemo(() => {
@@ -292,7 +292,7 @@ export default function CreatePage() {
 
   useEffect(() => {
     if (post?.platform) {
-      const matching = allAccounts.filter(a => a.platformId === post.platform);
+      const matching = allAccounts.filter(a => a.platformId === post.platform.toLowerCase());
       if (matching.length > 0) {
         setSelectedAccountId(matching[0].id);
       } else {
@@ -358,7 +358,7 @@ export default function CreatePage() {
     };
   }, [pendingGen, selectedDraftId]);
 
-  const cfg = post ? platformConfig[post.platform] || platformConfig.linkedin : null;
+  const cfg = post ? platformConfig[post.platform.toLowerCase()] || platformConfig.linkedin : null;
 
   const handlePlatformChange = (newPlatform: string) => {
     if (!post) return;
@@ -383,13 +383,17 @@ export default function CreatePage() {
           accountId: selectedAccount.id,
         }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP ${res.status}`);
+      }
       setStatusMsg("Posted! It will appear on your connected account shortly.");
+      setTimeout(() => setStatusMsg(""), 5000);
       clearGeneratedPost();
       await deleteDraftFromDb();
       setTimeout(() => router.push("/scheduler"), 2000);
-    } catch {
-      setStatusMsg("Post failed. Check your platform connection.");
+    } catch (err) {
+      setStatusMsg(`Post failed: ${(err as Error).message}`);
     }
   };
 
@@ -892,7 +896,14 @@ export default function CreatePage() {
               {/* Action Buttons */}
               <div className="flex gap-3">
                 <button
-                  onClick={() => selectedAccount ? handleAccept() : router.push("/platforms")}
+                  onClick={() => {
+                    if (!selectedAccount) {
+                      alert(`Please connect a ${platformConfig[post.platform.toLowerCase()]?.name || post.platform} account first to post this draft.`);
+                      router.push("/platforms");
+                    } else {
+                      handleAccept();
+                    }
+                  }}
                   className={cn(
                     "flex items-center gap-2 px-6 py-3 rounded-xl transition-all text-xs font-bold uppercase tracking-wider flex-1 justify-center",
                     selectedAccount
@@ -900,10 +911,17 @@ export default function CreatePage() {
                       : "bg-jarvis-panel border border-jarvis-panel-border text-jarvis-text-muted hover:text-jarvis-text hover:border-jarvis-primary/30"
                   )}
                 >
-                  <ThumbsUp className="size-4" /> {selectedAccount ? "Accept & Post" : "Connect Account"}
+                  <ThumbsUp className="size-4" /> Accept & Post
                 </button>
                 <button
-                  onClick={() => selectedAccount ? setShowSchedule(true) : router.push("/platforms")}
+                  onClick={() => {
+                    if (!selectedAccount) {
+                      alert(`Please connect a ${platformConfig[post.platform.toLowerCase()]?.name || post.platform} account first to schedule this draft.`);
+                      router.push("/platforms");
+                    } else {
+                      setShowSchedule(true);
+                    }
+                  }}
                   className={cn(
                     "flex items-center gap-2 px-6 py-3 rounded-xl transition-all text-xs font-bold uppercase tracking-wider flex-1 justify-center",
                     selectedAccount
@@ -911,7 +929,7 @@ export default function CreatePage() {
                       : "bg-jarvis-panel border border-jarvis-panel-border text-jarvis-text-muted hover:text-jarvis-text hover:border-jarvis-primary/30"
                   )}
                 >
-                  <Calendar className="size-4" /> {selectedAccount ? "Schedule" : "Connect Account"}
+                  <Calendar className="size-4" /> Schedule
                 </button>
                 <button
                   onClick={() => setShowFeedback(true)}

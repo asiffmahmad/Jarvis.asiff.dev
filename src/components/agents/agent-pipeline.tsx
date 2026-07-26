@@ -56,7 +56,7 @@ function tryParsePost(text: string): ParsedPost | null {
         hashtags: Array.isArray(p.hashtags) ? p.hashtags as string[] : [],
         mediaIdeas: Array.isArray(p.mediaIdeas) ? p.mediaIdeas as string[] : [],
         callToAction: (p.callToAction as string) || "",
-        platform: (p.platform as string) || "linkedin",
+        platform: ((p.platform as string) || "linkedin").toLowerCase(),
         bestPostingTime: (p.bestPostingTime as string) || "",
       };
     }

@@ -18,7 +18,8 @@ export async function GET() {
       status: "active",
     }));
 
-    if (parsedAccounts.length === 0) {
+    const hasLinkedInDB = parsedAccounts.some(a => a.platformId === "linkedin");
+    if (!hasLinkedInDB) {
       const hasLinkedIn = !!process.env.LINKEDIN_ACCESS_TOKEN;
       if (hasLinkedIn) {
         parsedAccounts.push({
@@ -32,11 +33,17 @@ export async function GET() {
       } else {
         parsedAccounts.push({ id: "acc_li_1", platformId: "linkedin", accountName: "Tony Stark", handle: "@ironman", avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=tony", status: "active" });
       }
+    }
 
+    const hasInstagramDB = parsedAccounts.some(a => a.platformId === "instagram");
+    if (!hasInstagramDB) {
       parsedAccounts.push(
         { id: "acc_ig_1", platformId: "instagram", accountName: "Stark Industries", handle: "@starkindustries", avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=stark", status: "active" }
       );
-      
+    }
+    
+    const hasXDB = parsedAccounts.some(a => a.platformId === "x");
+    if (!hasXDB) {
       const hasXKeys = !!process.env.X_API_KEY && !!process.env.X_ACCESS_TOKEN;
       if (hasXKeys) {
         parsedAccounts.push({
