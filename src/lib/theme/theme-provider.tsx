@@ -1,13 +1,5 @@
 "use client";
 
-/**
- * JARVIS Content Automation Suite — Theme Provider
- *
- * Global theme context providing design system state to all components.
- * The JARVIS interface is always dark by design — this provider manages
- * theme state and injects CSS custom properties into the document root.
- */
-
 import {
   createContext,
   useCallback,
@@ -17,19 +9,16 @@ import {
   type ReactNode,
 } from "react";
 import { createLogger } from "@/lib/logger";
+import { SettingsService } from "@/lib/settings/settings-service";
 
 const log = createLogger("ThemeProvider");
 
-type ThemeMode = "dark" | "system";
+type ThemeMode = "dark" | "light" | "system";
 
 interface ThemeContextValue {
-  /** Current active theme mode */
   mode: ThemeMode;
-  /** Whether the sidebar is collapsed */
   sidebarCollapsed: boolean;
-  /** Toggle sidebar collapse state */
   toggleSidebar: () => void;
-  /** Set sidebar collapse state explicitly */
   setSidebarCollapsed: (collapsed: boolean) => void;
 }
 
@@ -37,35 +26,57 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 interface ThemeProviderProps {
   children: ReactNode;
-  /** Default theme mode. JARVIS is designed as a dark interface. */
-  defaultMode?: ThemeMode;
-  /** Default sidebar state */
   defaultSidebarCollapsed?: boolean;
 }
 
 export function ThemeProvider({
   children,
-  defaultMode = "dark",
   defaultSidebarCollapsed = false,
 }: ThemeProviderProps) {
-  const [mode] = useState<ThemeMode>(defaultMode);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(
-    defaultSidebarCollapsed
-  );
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(defaultSidebarCollapsed);
+  const [mode, setMode] = useState<ThemeMode>("dark");
 
   const toggleSidebar = useCallback(() => {
-    setSidebarCollapsed((prev) => {
-      log.debug("Sidebar toggled", { collapsed: !prev });
-      return !prev;
-    });
+    setSidebarCollapsed((prev) => !prev);
   }, []);
 
   useEffect(() => {
+    // Read directly from SettingsService as useSettings hook might cause unnecessary re-renders here if we just want to watch it, 
+    // but ideally we just poll or subscribe. Since this is a simple local storage based service, we can poll or use an event.
+    // For simplicity, let's sync every 500ms for this demo since SettingsService doesn't have an EventEmitter.
+    
     const root = document.documentElement;
-    root.classList.add("dark");
-    root.setAttribute("data-theme", "jarvis");
-    log.info("Theme initialized", { mode });
-  }, [mode]);
+    const service = SettingsService.getInstance();
+    
+    const syncTheme = () => {
+      const settings = service.getSettings();
+      const currentTheme = settings.appearance.theme;
+      const currentAccent = settings.appearance.accentColor;
+
+      setMode(currentTheme);
+
+      // Apply theme mode
+      if (currentTheme === "light" || (currentTheme === "system" && !window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+        root.classList.add("light");
+        root.classList.remove("dark");
+      } else {
+        root.classList.add("dark");
+        root.classList.remove("light");
+      }
+
+      // Apply accent color overrides
+      root.style.setProperty("--color-jarvis-primary", currentAccent);
+      root.style.setProperty("--color-jarvis-glow-primary", currentAccent);
+    };
+
+    // Initial sync
+    syncTheme();
+
+    // Poll to catch updates from the settings page
+    const interval = setInterval(syncTheme, 500);
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <ThemeContext.Provider
@@ -81,12 +92,6 @@ export function ThemeProvider({
   );
 }
 
-/**
- * Access the JARVIS theme context.
- *
- * @example
- * const { sidebarCollapsed, toggleSidebar } = useTheme();
- */
 export function useTheme(): ThemeContextValue {
   const context = useContext(ThemeContext);
   if (!context) {

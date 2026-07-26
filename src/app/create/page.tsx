@@ -209,8 +209,16 @@ export default function CreatePage() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
 
-  const oauthService = useMemo(() => OAuthService.getInstance(), []);
-  const allAccounts = useMemo(() => oauthService.getAccounts(), [oauthService]);
+  const [allAccounts, setAllAccounts] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch("/api/platforms/accounts")
+      .then(res => res.json())
+      .then(data => {
+        if (data.accounts) setAllAccounts(data.accounts);
+      })
+      .catch(console.error);
+  }, []);
 
   const accountsForPlatform = useMemo(() => {
     if (!post) return [];
@@ -758,22 +766,28 @@ export default function CreatePage() {
                     </button>
                     {showAccountPicker && (
                       <div className="absolute top-full mt-1 left-0 right-0 z-10 bg-jarvis-bg-deep border border-jarvis-panel-border rounded-xl overflow-hidden shadow-xl">
-                        {accountsForPlatform.map(acc => (
-                          <button
-                            key={acc.id}
-                            onClick={() => { setSelectedAccountId(acc.id); setShowAccountPicker(false); }}
-                            className={cn(
-                              "w-full flex items-center gap-3 px-3 py-2.5 text-sm text-jarvis-text hover:bg-jarvis-panel transition-colors",
-                              selectedAccountId === acc.id && "bg-jarvis-primary/5"
-                            )}
-                          >
-                            <AccountAvatar account={acc} size="sm" />
-                            <div className="text-left">
-                              <p className="text-sm font-semibold">{acc.accountName}</p>
-                              <p className="text-xs text-jarvis-text-muted">{acc.handle}</p>
-                            </div>
-                          </button>
-                        ))}
+                        {accountsForPlatform.length === 0 ? (
+                          <div className="px-3 py-4 text-center text-sm text-jarvis-text-muted">
+                            No accounts connected for this platform.
+                          </div>
+                        ) : (
+                          accountsForPlatform.map(acc => (
+                            <button
+                              key={acc.id}
+                              onClick={() => { setSelectedAccountId(acc.id); setShowAccountPicker(false); }}
+                              className={cn(
+                                "w-full flex items-center gap-3 px-3 py-2.5 text-sm text-jarvis-text hover:bg-jarvis-panel transition-colors",
+                                selectedAccountId === acc.id && "bg-jarvis-primary/5"
+                              )}
+                            >
+                              <AccountAvatar account={acc} size="sm" />
+                              <div className="text-left">
+                                <p className="text-sm font-semibold">{acc.accountName}</p>
+                                <p className="text-xs text-jarvis-text-muted">{acc.handle}</p>
+                              </div>
+                            </button>
+                          ))
+                        )}
                       </div>
                     )}
                   </div>

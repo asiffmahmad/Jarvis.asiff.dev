@@ -17,12 +17,6 @@ const CATEGORIES: { id: SettingsCategory; label: string; icon: React.ElementType
   { id: 'security', label: 'Security', icon: ShieldCheck },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'storage', label: 'Storage', icon: Database },
-  { id: 'backup', label: 'Backup & Restore', icon: Cloud },
-  { id: 'shortcuts', label: 'Keyboard Shortcuts', icon: Keyboard },
-  { id: 'logs', label: 'System Logs', icon: Terminal },
-  { id: 'accessibility', label: 'Accessibility', icon: Accessibility },
-  { id: 'advanced', label: 'Advanced', icon: Zap },
-  { id: 'about', label: 'About', icon: Info },
 ];
 
 export function SettingsSidebarLeft({ state }: SidebarProps) {

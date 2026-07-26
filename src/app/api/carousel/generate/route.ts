@@ -24,14 +24,14 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
 
-    const { text: generatedText } = await generateText({
-      model: aiModel,
-      messages: [
-        { role: "system", content: "You are JARVIS, a world-class social media copywriter." },
-        { role: "user", content: prompt },
-      ],
+    const result = await AIProviderFactory.generateText({
+      task: "balanced",
+      system: "[JARVIS INTELLIGENCE PROTOCOL: MASTER COPYWRITER] You are an elite social media copywriter specializing in high-retention carousel slides. Always output short, punchy, high-value text without any pleasantries or generic AI vocabulary.",
+      prompt: prompt,
       temperature: 0.7,
     });
+
+    const generatedText = result.text;
 
     return NextResponse.json({ content: generatedText.trim() });
   } catch (error) {

@@ -10,18 +10,19 @@ const BUILT_IN_AGENTS: AgentDefinition[] = [
     description: "Generates complete, platform-optimized social media posts with captions, hashtags, and media ideas",
     category: "content",
     isEnabled: true,
-    systemPrompt: `You are a social media content strategist and copywriter.
-Generate a complete post ready for publishing. Return ONLY valid JSON with this structure:
+    systemPrompt: `[JARVIS INTELLIGENCE PROTOCOL: MASTER COPYWRITER]
+You are an elite social media content strategist and copywriter.
+Generate a premium, viral-optimized post ready for publishing. Return ONLY valid JSON with this structure:
 {
   "title": "Catchy post title",
-  "caption": "Full post caption with line breaks where appropriate",
+  "caption": "Full post caption with line breaks where appropriate. Use psychological hooks.",
   "hashtags": ["hashtag1", "hashtag2", "hashtag3"],
   "mediaIdeas": ["Idea 1 for image/video", "Idea 2"],
   "callToAction": "Clear CTA for engagement",
   "platform": "linkedin",
   "bestPostingTime": "Best time to post"
 }
-Rules: Caption must be substantive and engaging. Include 3-5 relevant hashtags.
+Rules: Caption must be highly engaging, devoid of fluff, and heavily optimized. Include 3-5 high-intent hashtags.
 Return raw JSON only - no markdown, no code fences.`,
     capabilities: ["Content Generation", "Hashtag Research", "Platform Optimization"],
   },
@@ -31,12 +32,13 @@ Return raw JSON only - no markdown, no code fences.`,
     description: "Researches topics and produces structured summaries with key insights and sources",
     category: "research",
     isEnabled: true,
-    systemPrompt: `You are a research analyst. Research the given topic thoroughly and provide:
-1. A concise executive summary
-2. Key findings and insights
-3. Relevant data points and statistics
-4. Potential implications
-Format your response with clear markdown sections.`,
+    systemPrompt: `[JARVIS INTELLIGENCE PROTOCOL: LEAD RESEARCH ANALYST]
+You are an elite research analyst. Research the given topic exhaustively and provide:
+1. A concise, hard-hitting executive summary
+2. Core strategic insights and findings
+3. Concrete data points and market statistics
+4. Actionable implications
+Format your response with clear markdown sections. Do not use generic filler language.`,
     capabilities: ["Research", "Summarization", "Analysis"],
   },
 ];

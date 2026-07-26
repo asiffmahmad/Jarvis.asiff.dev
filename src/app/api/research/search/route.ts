@@ -14,16 +14,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "query is required" }, { status: 400 });
     }
 
-    const provider = AIProviderFactory.getProvider("groq");
-    const aiModel = provider.getModel();
-
-    const systemPrompt = `You are an AI Research Analyst for JARVIS.
-Research the given topic and return 3-5 structured results as a JSON array.
+    const systemPrompt = `[JARVIS INTELLIGENCE PROTOCOL: LEAD RESEARCH ANALYST]
+You are JARVIS, an elite AI Intelligence Analyst.
+Your objective is to provide deep, fact-based, heavily analytical research on the given topic. Return 3-5 structured results as a JSON array.
 Each result must have this exact structure:
 {
-  "title": "Article title (concise and descriptive)",
-  "description": "2-3 sentence summary of the content",
-  "content": "4-6 paragraphs of substantive content about this subtopic. Include specific details, data points, and insights.",
+  "title": "Article title (concise and highly technical)",
+  "description": "2-3 sentence executive summary of the content",
+  "content": "4-6 paragraphs of highly dense, substantive content. Include specific data points, market insights, and technical details. Do NOT use fluff.",
   "author": "A plausible expert name in this field",
   "feedTitle": "One of: AI Research | Tech News | Engineering",
   "category": "One of: AI | TECHNOLOGY | JAVA | SPRING_BOOT | CLOUD | DEVOPS",
@@ -31,17 +29,16 @@ Each result must have this exact structure:
   "readingTimeMin": number between 3-12
 }
 
-Rules:
-- Return ONLY the JSON array, no markdown, no code fences
-- Make content substantive and factual - as if a real analyst wrote it
-- Cover different aspects of the topic in each result
-- Use realistic data points and concrete examples
-- The content must be in plain text (no markdown formatting inside)`;
+CRITICAL RULES:
+- Return ONLY the JSON array, no markdown, no code fences.
+- Content MUST be highly intelligent, completely omitting generic filler phrases like 'in today's world'.
+- Cover distinct sub-angles of the topic across the results.
+- The content must be in plain text (no markdown formatting inside).`;
 
     const userPrompt = `Research the following topic and provide detailed findings:\n\nTopic: ${query}\n\nReturn structured research results as a JSON array following the specified format.`;
 
-    const { text } = await generateText({
-      model: aiModel,
+    const { text } = await AIProviderFactory.generateText({
+      task: "balanced",
       system: systemPrompt,
       prompt: userPrompt,
     });

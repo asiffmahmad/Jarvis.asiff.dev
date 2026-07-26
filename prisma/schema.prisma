@@ -293,7 +293,7 @@ model Integration {
 model ScheduleJob {
   id             String    @id @default(cuid())
   type           String    // workflow, post, agent
-  targetId       String    // ID of the target to execute
+  targetId       String    @db.LongText // ID of the target to execute (also stores JSON payload for posts)
   cronExpression String?
   runAt          DateTime?
   status         String    // pending, processing, completed, failed

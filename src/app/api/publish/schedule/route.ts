@@ -3,12 +3,17 @@ import prisma from "@/lib/db/prisma";
 import type { ScheduledJob, JobLog } from "@/lib/scheduler/types";
 import type { SchedulePostRequest } from "@/lib/publishing/types";
 
+export const dynamic = "force-dynamic";
+
 // Helper to map DB row to ScheduledJob format
 function mapRowToJob(row: any): ScheduledJob {
-  let parsed = { payload: {}, logs: [] as JobLog[], retryConfig: { maxRetries: 3, currentAttempt: 0, backoffMinutes: 1 } };
+  let parsed: any = { payload: {}, logs: [] as JobLog[], retryConfig: { maxRetries: 3, currentAttempt: 0, backoffMinutes: 1 } };
   try {
     if (row.targetId) {
-      parsed = JSON.parse(row.targetId);
+      const p = JSON.parse(row.targetId);
+      if (p && typeof p === 'object') {
+        parsed = p;
+      }
     }
   } catch (err) {
     console.error("Failed to parse targetId payload:", err);

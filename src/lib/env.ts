@@ -77,6 +77,9 @@ export const serverEnv = {
   get openrouterApiKey() {
     return optional("OPENROUTER_API_KEY");
   },
+  get nvidiaApiKey() {
+    return optional("NVIDIA_API_KEY");
+  },
 
   /* Social Media */
   get instagramAccessToken() {

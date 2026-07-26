@@ -112,7 +112,7 @@
 
 html {
   color-scheme: dark;
-  scroll-behavior: smooth;
+  /* Removed scroll-behavior: smooth; due to Next.js warning. If needed, use data-scroll-behavior="smooth" on html tag */
 }
 
 body {
@@ -285,4 +285,28 @@ body {
   font-family: var(--font-heading);
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+/* --------------------------------------------------------------------------
+   Light Theme Overrides
+   -------------------------------------------------------------------------- */
+:root.light {
+  --color-jarvis-bg-deepest: #F4F8FB !important;
+  --color-jarvis-bg-deep: #EAF0F6 !important;
+  --color-jarvis-bg-base: #FFFFFF !important;
+  --color-jarvis-bg: #FFFFFF !important;
+  --color-jarvis-bg-panel: #FFFFFF !important;
+  --color-jarvis-panel: #FFFFFF !important;
+  --color-jarvis-panel-elevated: #F8FAFC !important;
+
+  --color-jarvis-text: #06090F !important;
+  --color-jarvis-text-primary: #06090F !important;
+  --color-jarvis-text-secondary: #607488 !important;
+  --color-jarvis-text-muted: #9EB4C7 !important;
+
+  --color-jarvis-border: rgba(0, 0, 0, 0.1) !important;
+  --color-jarvis-border-strong: rgba(0, 0, 0, 0.2) !important;
+  --color-jarvis-panel-border: rgba(0, 0, 0, 0.1) !important;
+  
+  color-scheme: light !important;
 }

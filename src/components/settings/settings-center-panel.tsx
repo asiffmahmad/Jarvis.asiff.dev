@@ -204,14 +204,6 @@ export function SettingsCenterPanel({ state }: CenterPanelProps) {
             </div>
           )}
 
-          {/* --- Placeholders for other tabs --- */}
-          {['logs', 'shortcuts', 'backup', 'accessibility', 'advanced', 'about'].includes(activeCategory) && (
-            <div className="p-12 text-center border border-jarvis-panel-border border-dashed rounded-xl bg-jarvis-panel/20">
-              <h3 className="text-lg font-heading font-bold text-jarvis-text mb-2">Architectural Placeholder</h3>
-              <p className="text-sm text-jarvis-text-muted">The {activeCategory} configurations are managed via external services in this iteration.</p>
-            </div>
-          )}
-
         </motion.div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { type AIProvider, type AIProviderConfig } from "./provider";
 import { serverEnv } from "../env";
 
-interface OpenRouterResponse {
+interface NvidiaResponse {
   choices: {
     message: {
       content: string | null;
@@ -15,22 +15,22 @@ interface OpenRouterResponse {
   };
 }
 
-export class OpenRouterProvider implements AIProvider {
-  readonly id = "openrouter";
+export class NvidiaProvider implements AIProvider {
+  readonly id = "nvidia";
 
-  private defaultModel = "meta-llama/llama-3.1-8b-instruct";
+  private defaultModel = "google/gemma-4-31b-it";
 
   getModel(config?: Partial<AIProviderConfig>) {
-    const apiKey = config?.apiKey || serverEnv.openrouterApiKey;
+    const apiKey = config?.apiKey || serverEnv.nvidiaApiKey;
     const modelId = config?.model || this.defaultModel;
 
     if (!apiKey) {
-      throw new Error("OpenRouter API key is missing. Please set OPENROUTER_API_KEY in your environment.");
+      throw new Error("NVIDIA API key is missing. Please set NVIDIA_API_KEY in your environment.");
     }
 
     return {
       specificationVersion: "v1",
-      provider: "openrouter",
+      provider: "nvidia",
       modelId,
       defaultObjectGenerationMode: "json",
       supportsImageUrls: false,
@@ -49,7 +49,7 @@ export class OpenRouterProvider implements AIProvider {
           return { role: msg.role, content: text };
         });
 
-        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        const res = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -59,17 +59,19 @@ export class OpenRouterProvider implements AIProvider {
           body: JSON.stringify({
             model: modelId,
             messages,
-            max_tokens: 1500, // Reduced from 4096 to prevent 402 insufficient credit errors
+            max_tokens: 1500, // Reduced to prevent limit errors
+            temperature: 0.7,
+            top_p: 0.95
           }),
           signal: options.abortSignal,
         });
 
         if (!res.ok) {
           const errorBody = await res.text().catch(() => "");
-          throw new Error(`OpenRouter API error ${res.status}: ${errorBody}`);
+          throw new Error(`NVIDIA API error ${res.status}: ${errorBody}`);
         }
 
-        const data: OpenRouterResponse = await res.json();
+        const data: NvidiaResponse = await res.json();
         const content = data.choices?.[0]?.message?.content || "";
         const finishReason = data.choices?.[0]?.finish_reason || "stop";
 
@@ -84,7 +86,7 @@ export class OpenRouterProvider implements AIProvider {
               }
             : undefined,
           response: {
-            id: `openrouter_${Date.now()}`,
+            id: `nvidia_${Date.now()}`,
             timestamp: new Date(),
             modelId,
           },
@@ -92,7 +94,7 @@ export class OpenRouterProvider implements AIProvider {
       },
 
       doStream: async () => {
-        throw new Error("Streaming not supported via OpenRouter provider");
+        throw new Error("Streaming not supported via NVIDIA provider");
       },
     };
   }

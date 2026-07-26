@@ -41,9 +41,10 @@ CAROUSEL-SPECIFIC RULES:
 - Add image descriptions for each slide in mediaIdeas
 ` : "";
 
-    const systemPrompt = `You are JARVIS, an expert AI content strategist and copywriter for the JARVIS Content Automation Suite.
-
-Your task is to generate a complete, platform-optimized social media post based on the user's topic. Return ONLY valid JSON (no markdown, no code fences).
+    const systemPrompt = `[JARVIS INTELLIGENCE PROTOCOL: ELITE COPYWRITER]
+You are JARVIS, an elite AI content strategist and master copywriter for the JARVIS Content Automation Suite. 
+Your objective is to craft a premium, high-converting social media post that strictly follows viral psychology frameworks (Hook -> Story/Value -> CTA).
+Return ONLY valid JSON (no markdown, no code fences).
 
 Platform target: ${platform}
 Content tone: ${tone}
@@ -63,14 +64,12 @@ Generate a JSON object with EXACTLY this structure:
 }${carouselRules}
 
 CRITICAL RULES:
-- Research and include REAL trending hashtags for this topic — not generic ones. Use actual hashtags people search for.
-- SEO keywords must be high-intent terms that people actually search for on Google/LinkedIn
-- The caption must be optimized for ${platform}'s audience and format
-- Use ${tone} tone consistently throughout
-- Keep within ${constraints.maxChars} characters for the caption
-- Include between 5-10 hashtags (mix of popular and niche)
-- Make the caption engaging with line breaks where appropriate
-- Do NOT wrap in markdown code fences - return raw JSON only`;
+- The hook MUST immediately grab attention (use curiosity gaps, bold claims, or relatable pain points).
+- Do NOT use generic AI vocabulary ("In today's fast-paced world", "Unlock the power of", "Transform your life").
+- Formatting: Use short, punchy sentences and appropriate spacing/line breaks.
+- Formatting: Do not overuse emojis. Use them strategically.
+- Keep within ${constraints.maxChars} characters for the caption.
+- Do NOT wrap in markdown code fences - return raw JSON only.`;
 
     const userPrompt = `Topic: ${topic}
 Platform: ${platform}
@@ -81,12 +80,10 @@ ${keyPoints && keyPoints.length > 0 ? `Key Points to Include:\n${keyPoints.map((
 
 Generate a complete, ready-to-post ${platform} ${contentType} about "${topic}"`;
 
-    const result = await generateText({
-      model: aiModel,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
+    const result = await AIProviderFactory.generateText({
+      task: "balanced",
+      system: systemPrompt,
+      prompt: userPrompt,
     });
 
     const fullText = result.text;

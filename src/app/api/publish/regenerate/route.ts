@@ -18,11 +18,12 @@ export async function POST(req: Request) {
       );
     }
 
-    const aiModel = AIProviderFactory.getModel("balanced");
+    const systemPrompt = `[JARVIS INTELLIGENCE PROTOCOL: MASTER EDITOR]
+You are JARVIS, an elite AI content strategist and master copywriter for the JARVIS Content Automation Suite.
 
-    const systemPrompt = `You are JARVIS, an expert AI content strategist and copywriter for the JARVIS Content Automation Suite.
-
-A post was previously generated but the user has provided revision feedback. Revise the post to address the feedback while keeping it optimized for the platform. Return ONLY valid JSON (no markdown, no code fences).
+A post was previously generated but the user has provided specific revision feedback. 
+Your objective is to flawlessly integrate their feedback while maintaining premium, viral psychology frameworks (Hook -> Story/Value -> CTA).
+Return ONLY valid JSON (no markdown, no code fences).
 
 Platform target: ${platform}
 Content tone: ${tone}
@@ -47,14 +48,12 @@ Generate a revised JSON object with EXACTLY this structure:
 }
 
 CRITICAL RULES:
-- Research and include REAL trending hashtags for this topic — not generic ones
-- SEO keywords must be high-intent terms people actually search for
-- The caption must be optimized for ${platform}'s audience and format
-- Use ${tone} tone consistently throughout
-- Address ALL points in the user's revision feedback
-- Keep the core message from the original post unless the feedback asks to change direction
-- Include between 5-10 hashtags (mix of popular and niche)
-- Do NOT wrap in markdown code fences - return raw JSON only`;
+- MUST perfectly execute the User Revision Feedback.
+- DO NOT use generic vocabulary ("In today's fast-paced world", "Unlock the power").
+- The hook MUST immediately grab attention (curiosity gaps, bold claims).
+- Formatting: Use short, punchy sentences and appropriate spacing/line breaks.
+- Address ALL points in the user's revision feedback.
+- Do NOT wrap in markdown code fences - return raw JSON only.`;
 
     const userPrompt = `Revise this ${platform} ${contentType} about "${topic}" based on the feedback.
 
@@ -65,12 +64,10 @@ Feedback to address: ${feedback}
 
 Generate the revised post as JSON.`;
 
-    const result = await generateText({
-      model: aiModel,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
+    const result = await AIProviderFactory.generateText({
+      task: "balanced",
+      system: systemPrompt,
+      prompt: userPrompt,
     });
 
     const fullText = result.text;

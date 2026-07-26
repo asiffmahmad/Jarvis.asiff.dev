@@ -52,7 +52,7 @@ export default function RootLayout({
       className={`${inter.variable} ${orbitron.variable} dark`}
       suppressHydrationWarning
     >
-      <body className="min-h-screen bg-jarvis-bg-deepest font-body antialiased">
+      <body className="min-h-screen bg-jarvis-bg-deepest font-body antialiased" suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>
     </html>
