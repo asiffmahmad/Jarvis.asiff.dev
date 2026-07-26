@@ -750,48 +750,61 @@ export default function CreatePage() {
                 </div>
 
                 {/* Account selector */}
-                {accountsForPlatform.length > 0 && (
-                  <div className="relative">
-                    <span className="text-[10px] font-bold text-jarvis-text-muted uppercase tracking-widest">Posting as</span>
-                    <button
-                      onClick={() => setShowAccountPicker(!showAccountPicker)}
-                      className="w-full mt-1 flex items-center gap-3 bg-jarvis-panel border border-jarvis-panel-border rounded-lg px-3 py-2.5 text-sm text-jarvis-text hover:border-jarvis-primary/30 transition-colors"
-                    >
-                      {selectedAccount && <AccountAvatar account={selectedAccount} size="sm" />}
+                <div className="relative">
+                  <span className="text-[10px] font-bold text-jarvis-text-muted uppercase tracking-widest">Posting as</span>
+                  <button
+                    onClick={() => setShowAccountPicker(!showAccountPicker)}
+                    className="w-full mt-1 flex items-center gap-3 bg-jarvis-panel border border-jarvis-panel-border rounded-lg px-3 py-2.5 text-sm text-jarvis-text hover:border-jarvis-primary/30 transition-colors"
+                  >
+                    {selectedAccount ? (
+                      <>
+                        <AccountAvatar account={selectedAccount} size="sm" />
+                        <div className="text-left flex-1">
+                          <p className="text-sm font-semibold text-jarvis-text">{selectedAccount.accountName}</p>
+                          <p className="text-xs text-jarvis-text-muted">{selectedAccount.handle}</p>
+                        </div>
+                      </>
+                    ) : (
                       <div className="text-left flex-1">
-                        <p className="text-sm font-semibold text-jarvis-text">{selectedAccount?.accountName || "Select account"}</p>
-                        <p className="text-xs text-jarvis-text-muted">{selectedAccount?.handle || ""}</p>
-                      </div>
-                      <ChevronDown className="size-4 text-jarvis-text-muted" />
-                    </button>
-                    {showAccountPicker && (
-                      <div className="absolute top-full mt-1 left-0 right-0 z-10 bg-jarvis-bg-deep border border-jarvis-panel-border rounded-xl overflow-hidden shadow-xl">
-                        {accountsForPlatform.length === 0 ? (
-                          <div className="px-3 py-4 text-center text-sm text-jarvis-text-muted">
-                            No accounts connected for this platform.
-                          </div>
-                        ) : (
-                          accountsForPlatform.map(acc => (
-                            <button
-                              key={acc.id}
-                              onClick={() => { setSelectedAccountId(acc.id); setShowAccountPicker(false); }}
-                              className={cn(
-                                "w-full flex items-center gap-3 px-3 py-2.5 text-sm text-jarvis-text hover:bg-jarvis-panel transition-colors",
-                                selectedAccountId === acc.id && "bg-jarvis-primary/5"
-                              )}
-                            >
-                              <AccountAvatar account={acc} size="sm" />
-                              <div className="text-left">
-                                <p className="text-sm font-semibold">{acc.accountName}</p>
-                                <p className="text-xs text-jarvis-text-muted">{acc.handle}</p>
-                              </div>
-                            </button>
-                          ))
-                        )}
+                        <p className="text-sm font-semibold text-jarvis-text-muted">No account connected</p>
+                        <p className="text-xs text-[#FF4D4D]/80">Please connect an account to post</p>
                       </div>
                     )}
-                  </div>
-                )}
+                    <ChevronDown className="size-4 text-jarvis-text-muted" />
+                  </button>
+                  {showAccountPicker && (
+                    <div className="absolute top-full mt-1 left-0 right-0 z-10 bg-jarvis-bg-deep border border-jarvis-panel-border rounded-xl overflow-hidden shadow-xl">
+                      {accountsForPlatform.length === 0 ? (
+                        <div className="px-4 py-6 text-center">
+                          <p className="text-sm text-jarvis-text-muted mb-3">No accounts connected for {platformConfig[post.platform]?.name || post.platform}.</p>
+                          <button 
+                            onClick={() => router.push("/platforms")}
+                            className="px-4 py-2 bg-jarvis-primary/10 text-jarvis-primary border border-jarvis-primary/30 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-jarvis-primary/20 transition-colors"
+                          >
+                            Connect Account
+                          </button>
+                        </div>
+                      ) : (
+                        accountsForPlatform.map(acc => (
+                          <button
+                            key={acc.id}
+                            onClick={() => { setSelectedAccountId(acc.id); setShowAccountPicker(false); }}
+                            className={cn(
+                              "w-full flex items-center gap-3 px-3 py-2.5 text-sm text-jarvis-text hover:bg-jarvis-panel transition-colors",
+                              selectedAccountId === acc.id && "bg-jarvis-primary/5"
+                            )}
+                          >
+                            <AccountAvatar account={acc} size="sm" />
+                            <div className="text-left">
+                              <p className="text-sm font-semibold">{acc.accountName}</p>
+                              <p className="text-xs text-jarvis-text-muted">{acc.handle}</p>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {/* Title */}
                 <div>
@@ -879,28 +892,26 @@ export default function CreatePage() {
               {/* Action Buttons */}
               <div className="flex gap-3">
                 <button
-                  onClick={handleAccept}
-                  disabled={!selectedAccount}
+                  onClick={() => selectedAccount ? handleAccept() : router.push("/platforms")}
                   className={cn(
                     "flex items-center gap-2 px-6 py-3 rounded-xl transition-all text-xs font-bold uppercase tracking-wider flex-1 justify-center",
                     selectedAccount
                       ? "bg-[#34F5D0] hover:bg-[#34F5D0]/80 text-jarvis-bg-deepest"
-                      : "bg-jarvis-panel text-jarvis-text-muted cursor-not-allowed"
+                      : "bg-jarvis-panel border border-jarvis-panel-border text-jarvis-text-muted hover:text-jarvis-text hover:border-jarvis-primary/30"
                   )}
                 >
-                  <ThumbsUp className="size-4" /> Accept & Post
+                  <ThumbsUp className="size-4" /> {selectedAccount ? "Accept & Post" : "Connect Account"}
                 </button>
                 <button
-                  onClick={() => setShowSchedule(true)}
-                  disabled={!selectedAccount}
+                  onClick={() => selectedAccount ? setShowSchedule(true) : router.push("/platforms")}
                   className={cn(
                     "flex items-center gap-2 px-6 py-3 rounded-xl transition-all text-xs font-bold uppercase tracking-wider flex-1 justify-center",
                     selectedAccount
                       ? "bg-jarvis-accent/10 border border-jarvis-accent/30 text-jarvis-accent hover:bg-jarvis-accent/20"
-                      : "bg-jarvis-panel border border-jarvis-panel-border text-jarvis-text-muted cursor-not-allowed"
+                      : "bg-jarvis-panel border border-jarvis-panel-border text-jarvis-text-muted hover:text-jarvis-text hover:border-jarvis-primary/30"
                   )}
                 >
-                  <Calendar className="size-4" /> Schedule
+                  <Calendar className="size-4" /> {selectedAccount ? "Schedule" : "Connect Account"}
                 </button>
                 <button
                   onClick={() => setShowFeedback(true)}
