@@ -294,7 +294,7 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
         let feedback = payload;
         
         // Parse "REJECTED: Agent Name | Feedback"
-        const match = payload.match(/REJECTED:\s*\[?(.*?)\]?\s*\|\s*(.*)/is);
+        const match = payload.match(/REJECTED:\s*\[?([\s\S]*?)\]?\s*\|\s*([\s\S]*)/i);
         if (match) {
           targetAgentName = match[1].trim();
           feedback = match[2].trim();
