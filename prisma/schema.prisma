@@ -192,6 +192,16 @@ model Asset {
   user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model MediaBlob {
+  id        String   @id @default(cuid())
+  filename  String?
+  mimeType  String
+  data      Bytes    @db.LongBlob
+  sourceUrl String?  @db.Text
+  createdAt DateTime @default(now())
+}
+
+
 // ---------------------------------------------------------------------------
 // Automation & AI Agents
 // ---------------------------------------------------------------------------

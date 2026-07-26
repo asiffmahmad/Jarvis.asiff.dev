@@ -62,6 +62,25 @@ export async function GET() {
       `;
       agents = await prisma.$queryRaw`SELECT * FROM Agent`;
     }
+
+    // Auto-seed Media Developer Agent if it doesn't exist
+    if (!agents.find(a => a.name === "Media Developer")) {
+      await prisma.$executeRaw`
+        INSERT INTO Agent (id, name, description, systemPrompt, model, apiProvider, usageLeft, isActive, updatedAt)
+        VALUES (
+          ${Math.random().toString(36).substring(7)},
+          'Media Developer',
+          'Searches for images and videos using the Pixabay API',
+          '[JARVIS INTELLIGENCE PROTOCOL: MEDIA DEVELOPER]\nYou are a Media Developer agent. Your objective is to help the user find images and videos using the Pixabay API.\nWhen a user asks for media (images or videos), construct the appropriate Pixabay API URL.\nFor videos: https://pixabay.com/api/videos/?key=56870592-9cd9fcd9ccb8d5e123c67bd18&q={url_encoded_query}\nFor images: https://pixabay.com/api/?key=56870592-9cd9fcd9ccb8d5e123c67bd18&q={url_encoded_query}\nCRITICAL: The search query (q) MUST NOT exceed 100 characters. Extract only the most essential keywords.\nReturn ONLY valid JSON with this structure:\n{\n  "query": "The search query (max 100 chars)",\n  "mediaType": "video",\n  "apiUrl": "The constructed Pixabay API URL"\n}\nRules: Return raw JSON only - no markdown, no code fences.',
+          'gpt-4',
+          'groq',
+          1000,
+          1,
+          NOW()
+        )
+      `;
+      agents = await prisma.$queryRaw`SELECT * FROM Agent`;
+    }
     
     return NextResponse.json(agents);
   } catch (error: any) {

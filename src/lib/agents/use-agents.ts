@@ -41,6 +41,27 @@ You are an elite research analyst. Research the given topic exhaustively and pro
 Format your response with clear markdown sections. Do not use generic filler language.`,
     capabilities: ["Research", "Summarization", "Analysis"],
   },
+  {
+    id: "media-developer",
+    name: "Media Developer",
+    description: "Searches for images and videos using the Pixabay API",
+    category: "media",
+    isEnabled: true,
+    systemPrompt: `[JARVIS INTELLIGENCE PROTOCOL: MEDIA DEVELOPER]
+You are a Media Developer agent. Your objective is to help the user find images and videos using the Pixabay API.
+When a user asks for media (images or videos), construct the appropriate Pixabay API URL.
+For videos: https://pixabay.com/api/videos/?key=56870592-9cd9fcd9ccb8d5e123c67bd18&q={url_encoded_query}
+For images: https://pixabay.com/api/?key=56870592-9cd9fcd9ccb8d5e123c67bd18&q={url_encoded_query}
+CRITICAL: The search query (q) MUST NOT exceed 100 characters. Extract only the most essential keywords.
+Return ONLY valid JSON with this structure:
+{
+  "query": "The search query (max 100 chars)",
+  "mediaType": "video",
+  "apiUrl": "The constructed Pixabay API URL"
+}
+Rules: Return raw JSON only - no markdown, no code fences.`,
+    capabilities: ["Media Search", "API Integration"],
+  },
 ];
 
 export function useAgents() {
@@ -182,14 +203,14 @@ export function useAgents() {
             result: fullOutput,
             logs: fullOutput.length > 100 && prev.logs.length < 4
               ? [
-                  ...prev.logs,
-                  {
-                    id: Date.now().toString(),
-                    timestamp: new Date(),
-                    level: "info",
-                    message: `Generating response... (${fullOutput.length} chars so far)`,
-                  },
-                ]
+                ...prev.logs,
+                {
+                  id: Date.now().toString(),
+                  timestamp: new Date(),
+                  level: "info",
+                  message: `Generating response... (${fullOutput.length} chars so far)`,
+                },
+              ]
               : prev.logs,
           }));
         }

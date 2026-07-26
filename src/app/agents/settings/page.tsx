@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AppLayout } from "@/components/layout/app-layout";
-import { Bot, Save, Loader2, Cpu, Activity, ShieldAlert, Key } from "lucide-react";
+import { Bot, Save, Loader2, Cpu, Activity, ShieldAlert, Key, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Agent = {
@@ -25,6 +25,12 @@ export default function AgentSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{success?: boolean, error?: string} | null>(null);
+  
+  // Test Sandbox State
+  const [testUserPrompt, setTestUserPrompt] = useState("");
+  const [isRunningTest, setIsRunningTest] = useState(false);
+  const [testExecutionResult, setTestExecutionResult] = useState<any>(null);
+  const [testMediaResult, setTestMediaResult] = useState<any>(null);
 
   // Form State
   const [formData, setFormData] = useState<Partial<Agent>>({});
@@ -55,6 +61,9 @@ export default function AgentSettingsPage() {
     setSelectedAgentId(agent.id);
     setFormData(agent);
     setTestResult(null);
+    setTestExecutionResult(null);
+    setTestMediaResult(null);
+    setTestUserPrompt("");
   };
 
   const handleCreateNew = () => {
@@ -127,6 +136,62 @@ export default function AgentSettingsPage() {
       setTestResult({ error: "Network error occurred" });
     } finally {
       setIsTesting(false);
+    }
+  };
+
+  const handleRunAgentTest = async () => {
+    setIsRunningTest(true);
+    setTestExecutionResult(null);
+    setTestMediaResult(null);
+    try {
+      const res = await fetch("/api/agents/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: selectedAgentId || "new",
+          linkedPromptContent: formData.systemPrompt,
+          runtimeVariables: { user_prompt: testUserPrompt },
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        let parsedResult = data.text;
+        try {
+           parsedResult = JSON.parse(data.text);
+           setTestExecutionResult(parsedResult);
+           
+           if (parsedResult.apiUrl) {
+             let finalUrl = parsedResult.apiUrl;
+             try {
+               const urlObj = new URL(finalUrl);
+               const q = urlObj.searchParams.get("q");
+               if (q && q.length > 100) {
+                 urlObj.searchParams.set("q", q.substring(0, 100));
+                 finalUrl = urlObj.toString();
+               }
+             } catch (e) {
+               // ignore invalid url parse errors
+             }
+
+             const mediaRes = await fetch(finalUrl);
+             if (mediaRes.ok) {
+               const mediaData = await mediaRes.json();
+               setTestMediaResult({ type: parsedResult.mediaType, data: mediaData, status: "success" });
+             } else {
+               const errorText = await mediaRes.text();
+               setTestMediaResult({ type: parsedResult.mediaType, error: errorText, status: "error" });
+             }
+           }
+        } catch (e) {
+           setTestExecutionResult(data.text);
+        }
+      } else {
+        setTestExecutionResult({ error: data.error });
+      }
+    } catch (err) {
+      setTestExecutionResult({ error: "Network error occurred" });
+    } finally {
+      setIsRunningTest(false);
     }
   };
 
@@ -311,6 +376,75 @@ export default function AgentSettingsPage() {
                   className="w-full h-64 bg-jarvis-bg/80 border border-jarvis-panel-border rounded-xl p-4 text-sm font-mono leading-relaxed focus:border-jarvis-primary/50 outline-none transition-colors resize-y shadow-inner"
                   placeholder="Define the agent's behavior..."
                 />
+              </div>
+
+              {/* Agent Testing Sandbox */}
+              <div className="glass-strong border border-jarvis-panel rounded-2xl p-6 relative overflow-hidden group mt-8">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-jarvis-text-muted mb-4 flex items-center gap-2">
+                  <Play className="size-4" /> Agent Testing Sandbox
+                </h3>
+                <div className="space-y-4 relative z-10">
+                  <textarea
+                    value={testUserPrompt}
+                    onChange={(e) => setTestUserPrompt(e.target.value)}
+                    className="w-full bg-jarvis-bg/80 border border-jarvis-panel-border rounded-xl p-4 text-sm font-mono focus:border-jarvis-primary/50 outline-none transition-colors resize-none h-24"
+                    placeholder="Enter user prompt to test (e.g., 'yellow flowers')..."
+                  />
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleRunAgentTest}
+                      disabled={isRunningTest || !testUserPrompt.trim()}
+                      className="flex items-center gap-2 bg-jarvis-primary/10 hover:bg-jarvis-primary/20 text-jarvis-primary border border-jarvis-primary/30 px-6 py-2 rounded-xl transition-all shadow-[0_0_15px_rgba(52,245,208,0.1)] font-bold uppercase text-[10px] tracking-widest disabled:opacity-50 shrink-0"
+                    >
+                      {isRunningTest ? <Loader2 className="size-3 animate-spin" /> : <Play className="size-3 fill-current" />}
+                      Execute Prompt
+                    </button>
+                  </div>
+                  
+                  {/* Results Display */}
+                  {testExecutionResult && (
+                    <div className="mt-6 border-t border-jarvis-panel-border pt-6">
+                       <h4 className="text-[10px] uppercase font-bold text-jarvis-text-muted tracking-widest mb-2">Agent Output</h4>
+                       <pre className="bg-jarvis-bg/50 p-4 rounded-xl border border-jarvis-panel-border text-xs text-jarvis-text/90 overflow-x-auto whitespace-pre-wrap">
+                         {typeof testExecutionResult === "string" ? testExecutionResult : JSON.stringify(testExecutionResult, null, 2)}
+                       </pre>
+                       
+                       {testMediaResult && (
+                         <div className="mt-4 p-4 border border-jarvis-primary/20 rounded-xl bg-jarvis-primary/5">
+                           <h4 className="text-[10px] uppercase font-bold text-jarvis-primary tracking-widest mb-3">Media Preview</h4>
+                           
+                           {testMediaResult.status === "error" && (
+                             <div className="text-red-400 text-xs font-mono bg-red-500/10 p-3 rounded-lg border border-red-500/20">
+                               API Error: {testMediaResult.error}
+                             </div>
+                           )}
+
+                           {testMediaResult.status === "success" && (!testMediaResult.data.hits || testMediaResult.data.hits.length === 0) && (
+                             <div className="text-jarvis-text-muted text-xs font-mono">
+                               No media results found for this query.
+                             </div>
+                           )}
+
+                           {testMediaResult.status === "success" && testMediaResult.data.hits && testMediaResult.data.hits.length > 0 && (
+                             testMediaResult.type === "video" ? (
+                               <video 
+                                 controls 
+                                 src={testMediaResult.data.hits[0].videos?.tiny?.url || testMediaResult.data.hits[0].videos?.small?.url || testMediaResult.data.hits[0].videos?.medium?.url} 
+                                 className="w-full rounded-lg shadow-lg border border-jarvis-panel-border"
+                               />
+                             ) : (
+                               <img 
+                                 src={testMediaResult.data.hits[0].webformatURL || testMediaResult.data.hits[0].largeImageURL} 
+                                 className="w-full rounded-lg shadow-lg border border-jarvis-panel-border object-contain max-h-[400px]"
+                                 alt="Preview"
+                               />
+                             )
+                           )}
+                         </div>
+                       )}
+                    </div>
+                  )}
+                </div>
               </div>
 
             </div>
