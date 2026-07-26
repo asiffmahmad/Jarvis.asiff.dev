@@ -1,8 +1,9 @@
 "use client";
 
 import {
-  Link2, AlertCircle, ExternalLink
+  Link2, AlertCircle, ExternalLink, CheckCircle2, Loader2, Play
 } from "lucide-react";
+import { useState, useEffect } from "react";
 import type { PlatformsState } from "@/lib/platforms/use-platforms";
 
 interface CenterPanelProps {
@@ -52,6 +53,61 @@ const platformInstructions: Record<string, string> = {
 export function PlatformsCenterPanel({ state }: CenterPanelProps) {
   const { activeProvider } = state;
 
+  const [statuses, setStatuses] = useState<Record<string, boolean>>({});
+  const [loadingStatus, setLoadingStatus] = useState(true);
+
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Fetch connection statuses on mount
+  useEffect(() => {
+    fetch("/api/platforms/status")
+      .then(res => res.json())
+      .then(data => {
+        setStatuses(data);
+        setLoadingStatus(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch connection statuses", err);
+        setLoadingStatus(false);
+      });
+  }, []);
+
+  // Clear test result when switching providers
+  useEffect(() => {
+    setTestResult(null);
+  }, [activeProvider?.id]);
+
+  const handleTestConnection = async () => {
+    if (!activeProvider) return;
+    
+    setTesting(true);
+    setTestResult(null);
+    
+    try {
+      const res = await fetch("/api/platforms/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platformId: activeProvider.id }),
+      });
+      const data = await res.json();
+      
+      setTestResult({
+        success: res.ok && data.success,
+        message: data.message || (res.ok ? "Connection successful" : "Connection failed")
+      });
+
+      // Update the status visually if it was successfully connected
+      if (res.ok && data.success) {
+        setStatuses(prev => ({ ...prev, [activeProvider.id]: true }));
+      }
+    } catch (err) {
+      setTestResult({ success: false, message: "An unexpected error occurred." });
+    } finally {
+      setTesting(false);
+    }
+  };
+
   if (!activeProvider) {
     return (
       <div className="flex-[2] flex flex-col items-center justify-center relative h-full bg-jarvis-bg-deepest/50 border-r border-jarvis-panel/50 p-8">
@@ -62,30 +118,69 @@ export function PlatformsCenterPanel({ state }: CenterPanelProps) {
     );
   }
 
+  const isConnected = statuses[activeProvider.id] || false;
+
   return (
     <div className="flex-[2] flex flex-col relative h-full bg-jarvis-bg-deepest/50 border-r border-jarvis-panel/50 p-8 overflow-y-auto">
       
-      <div className="mb-6">
+      <div className="mb-6 flex justify-between items-start">
         <h1 className="text-2xl font-heading font-bold text-jarvis-text uppercase tracking-widest flex items-center gap-3">
           <div className="w-8 h-8 rounded flex items-center justify-center font-bold text-sm text-white shadow-lg" style={{ backgroundColor: activeProvider.brandColor }}>
             {activeProvider.id.charAt(0).toUpperCase()}
           </div>
           {activeProvider.name}
         </h1>
+        
+        <button 
+          onClick={handleTestConnection}
+          disabled={testing || loadingStatus}
+          className="flex items-center gap-2 px-4 py-2 bg-jarvis-panel border border-jarvis-panel-border rounded-lg text-sm text-jarvis-text font-bold uppercase tracking-wider hover:bg-jarvis-panel-border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {testing ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Play className="size-4" />
+          )}
+          {testing ? "Testing..." : "Test Connection"}
+        </button>
       </div>
 
       <div className="space-y-8">
-        <div className="bg-jarvis-panel/30 border border-jarvis-panel-border rounded-xl p-6">
-          <div className="flex items-start gap-4">
-            <AlertCircle className="size-5 text-jarvis-text-muted shrink-0 mt-0.5" />
-            <div>
-              <h3 className="text-sm font-bold text-jarvis-text">Not Connected</h3>
-              <p className="text-xs text-jarvis-text-muted mt-1 leading-relaxed">
-                {platformInstructions[activeProvider.id] || `${activeProvider.name} is not yet connected.`}
-              </p>
+        {loadingStatus ? (
+          <div className="bg-jarvis-panel/30 border border-jarvis-panel-border rounded-xl p-6 flex items-center justify-center">
+            <Loader2 className="size-5 animate-spin text-jarvis-text-muted" />
+          </div>
+        ) : isConnected ? (
+          <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-6">
+            <div className="flex items-start gap-4">
+              <CheckCircle2 className="size-5 text-green-400 shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-bold text-green-400 uppercase tracking-wider">Connected</h3>
+                <p className="text-xs text-green-400/70 mt-1 leading-relaxed">
+                  {activeProvider.name} is properly configured and ready to be used.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-jarvis-panel/30 border border-jarvis-panel-border rounded-xl p-6">
+            <div className="flex items-start gap-4">
+              <AlertCircle className="size-5 text-jarvis-text-muted shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-bold text-jarvis-text uppercase tracking-wider">Not Connected</h3>
+                <p className="text-xs text-jarvis-text-muted mt-1 leading-relaxed">
+                  {platformInstructions[activeProvider.id] || `${activeProvider.name} is not yet connected.`}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {testResult && (
+          <div className={`p-4 rounded-lg border ${testResult.success ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+            <p className="text-sm font-mono">{testResult.message}</p>
+          </div>
+        )}
 
         <div>
           <h3 className="text-sm font-heading font-bold text-jarvis-text uppercase tracking-widest mb-4">
@@ -100,6 +195,9 @@ export function PlatformsCenterPanel({ state }: CenterPanelProps) {
                 <p className="text-sm text-jarvis-text/80 leading-relaxed">{step}</p>
               </div>
             ))}
+            {(!connectionGuides[activeProvider.id] || connectionGuides[activeProvider.id].steps.length === 0) && (
+              <p className="text-sm text-jarvis-text-muted">No specific instructions available.</p>
+            )}
           </div>
         </div>
 

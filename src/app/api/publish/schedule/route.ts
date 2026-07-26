@@ -33,6 +33,8 @@ function mapRowToJob(row: any): ScheduledJob {
   };
 }
 
+import { TwitterApi } from "twitter-api-v2";
+
 // Helper to map ScheduledJob back to targetId JSON string
 function serializeJobDetails(payload: any, logs: any[], retryConfig: any, errorReason?: string) {
   return JSON.stringify({ payload, logs, retryConfig, errorReason });
@@ -73,23 +75,57 @@ async function executeDueJobs() {
           message: "Starting scheduled job execution...",
         });
 
-        // 2. Simulate publishing to platform
+        // 2. Publish to platform
+        const payload = parsed.payload as any;
+        const platform = payload.platform;
+        
         parsed.logs.push({
           id: `log_${Date.now()}`,
           jobId: job.id,
           timestamp: new Date(),
           level: "INFO",
-          message: `Posting draft content to target account: ${(parsed.payload as any).accountId || "Default Account"}.`,
+          message: `Posting draft content to target account: ${payload.accountId || "Default Account"} on ${platform}.`,
         });
 
-        // Add success log
-        parsed.logs.push({
-          id: `log_${Date.now()}`,
-          jobId: job.id,
-          timestamp: new Date(),
-          level: "INFO",
-          message: `Successfully published content to ${(parsed.payload as any).platform || "social media platform"}.`,
-        });
+        if (platform === "x") {
+          // Verify environment variables for X
+          const appKey = process.env.X_API_KEY;
+          const appSecret = process.env.X_API_SECRET;
+          const accessToken = process.env.X_ACCESS_TOKEN;
+          const accessSecret = process.env.X_ACCESS_TOKEN_SECRET;
+
+          if (!appKey || !appSecret || !accessToken || !accessSecret) {
+            throw new Error("Missing X API keys or access tokens in environment configuration.");
+          }
+
+          const twitterClient = new TwitterApi({
+            appKey,
+            appSecret,
+            accessToken,
+            accessSecret,
+          });
+
+          // Perform the actual tweet post
+          const tweetText = payload.post?.caption || payload.post?.content || "Automated post from JARVIS";
+          const tweetRes = await twitterClient.v2.tweet(tweetText);
+
+          parsed.logs.push({
+            id: `log_${Date.now()}`,
+            jobId: job.id,
+            timestamp: new Date(),
+            level: "INFO",
+            message: `Successfully published tweet! ID: ${tweetRes.data.id}`,
+          });
+        } else {
+          // Simulate for other platforms
+          parsed.logs.push({
+            id: `log_${Date.now()}`,
+            jobId: job.id,
+            timestamp: new Date(),
+            level: "INFO",
+            message: `Successfully published content to ${platform || "social media platform"}. (Simulated)`,
+          });
+        }
 
         // 3. Update status to SUCCESS
         await prisma.scheduleJob.update({
@@ -274,20 +310,54 @@ export async function PUT(req: Request) {
         // Execute immediately in background
         setTimeout(async () => {
           try {
+            const payload = parsed.payload as any;
+            const platform = payload.platform;
+            
             parsed.logs.push({
               id: `log_${Date.now()}`,
               jobId: row.id,
               timestamp: new Date(),
               level: "INFO",
-              message: `Posting draft content to target account: ${(parsed.payload as any).accountId || "Default Account"}.`,
+              message: `Posting draft content to target account: ${payload.accountId || "Default Account"} on ${platform}.`,
             });
-            parsed.logs.push({
-              id: `log_${Date.now()}`,
-              jobId: row.id,
-              timestamp: new Date(),
-              level: "INFO",
-              message: `Successfully published content to ${(parsed.payload as any).platform || "social media platform"}.`,
-            });
+            
+            if (platform === "x") {
+              const appKey = process.env.X_API_KEY;
+              const appSecret = process.env.X_API_SECRET;
+              const accessToken = process.env.X_ACCESS_TOKEN;
+              const accessSecret = process.env.X_ACCESS_TOKEN_SECRET;
+
+              if (!appKey || !appSecret || !accessToken || !accessSecret) {
+                throw new Error("Missing X API keys or access tokens in environment configuration.");
+              }
+
+              const twitterClient = new TwitterApi({
+                appKey,
+                appSecret,
+                accessToken,
+                accessSecret,
+              });
+
+              const tweetText = payload.post?.caption || payload.post?.content || "Automated post from JARVIS";
+              const tweetRes = await twitterClient.v2.tweet(tweetText);
+
+              parsed.logs.push({
+                id: `log_${Date.now()}`,
+                jobId: row.id,
+                timestamp: new Date(),
+                level: "INFO",
+                message: `Successfully published tweet! ID: ${tweetRes.data.id}`,
+              });
+            } else {
+              parsed.logs.push({
+                id: `log_${Date.now()}`,
+                jobId: row.id,
+                timestamp: new Date(),
+                level: "INFO",
+                message: `Successfully published content to ${platform || "social media platform"}. (Simulated)`,
+              });
+            }
+            
             await prisma.scheduleJob.update({
               where: { id: jobId },
               data: {
@@ -295,8 +365,22 @@ export async function PUT(req: Request) {
                 targetId: serializeJobDetails(parsed.payload, parsed.logs, parsed.retryConfig),
               },
             });
-          } catch (err) {
-            console.error(err);
+          } catch (jobErr) {
+            console.error(`Failed to process job ${jobId}:`, jobErr);
+            parsed.logs.push({
+              id: `log_${Date.now()}`,
+              jobId: row.id,
+              timestamp: new Date(),
+              level: "ERROR",
+              message: `Execution failed: ${(jobErr as Error).message}`,
+            });
+            await prisma.scheduleJob.update({
+              where: { id: jobId },
+              data: {
+                status: "FAILED",
+                targetId: serializeJobDetails(parsed.payload, parsed.logs, parsed.retryConfig, (jobErr as Error).message),
+              },
+            });
           }
         }, 10);
       }

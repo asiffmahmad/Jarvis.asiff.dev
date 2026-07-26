@@ -22,9 +22,22 @@ export async function GET() {
       // Inject dummy accounts so the user can test the scheduling feature
       parsedAccounts.push(
         { id: "acc_li_1", platformId: "linkedin", accountName: "Tony Stark", handle: "@ironman", avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=tony", status: "active" },
-        { id: "acc_ig_1", platformId: "instagram", accountName: "Stark Industries", handle: "@starkindustries", avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=stark", status: "active" },
-        { id: "acc_x_1", platformId: "x", accountName: "Tony Stark", handle: "@tonystark", avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=tonyx", status: "active" }
+        { id: "acc_ig_1", platformId: "instagram", accountName: "Stark Industries", handle: "@starkindustries", avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=stark", status: "active" }
       );
+      
+      const hasXKeys = !!process.env.X_API_KEY && !!process.env.X_ACCESS_TOKEN;
+      if (hasXKeys) {
+        parsedAccounts.push({
+          id: "acc_x_real",
+          platformId: "x",
+          accountName: "My X Account",
+          handle: "@myxaccount",
+          avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=realx",
+          status: "active"
+        });
+      } else {
+        parsedAccounts.push({ id: "acc_x_1", platformId: "x", accountName: "Tony Stark", handle: "@tonystark", avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=tonyx", status: "active" });
+      }
     }
 
     return NextResponse.json({
