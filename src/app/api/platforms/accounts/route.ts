@@ -13,9 +13,9 @@ export async function GET() {
       id: a.id,
       platformId: a.platformId,
       accountName: a.accountName,
-      handle: a.handle,
-      avatarUrl: a.avatarUrl,
-      status: a.status,
+      handle: "@" + a.accountName.toLowerCase().replace(/\s+/g, ""),
+      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(a.accountName)}`,
+      status: "active",
     }));
 
     if (parsedAccounts.length === 0) {
