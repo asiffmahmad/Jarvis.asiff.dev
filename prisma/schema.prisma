@@ -223,15 +223,17 @@ model WorkflowExecution {
 }
 
 model Agent {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  systemPrompt String  @db.Text
-  model       String   
-  temperature Float    @default(0.7)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  systemPrompt String   @db.Text
+  model        String   
+  temperature  Float    @default(0.7)
+  apiProvider  String   @default("groq")
+  usageLeft    Int      @default(1000)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   executions AgentExecution[]
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { streamText } from "ai";
+import { generateText } from "ai";
 import { AIProviderFactory } from "@/lib/ai/factory";
 import { safeJsonParse } from "@/lib/utils";
 import type { Article, Category } from "@/lib/research/types";
@@ -40,37 +40,13 @@ Rules:
 
     const userPrompt = `Research the following topic and provide detailed findings:\n\nTopic: ${query}\n\nReturn structured research results as a JSON array following the specified format.`;
 
-    const result = await streamText({
+    const { text } = await generateText({
       model: aiModel,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
+      system: systemPrompt,
+      prompt: userPrompt,
     });
 
-    let fullText = "";
-    const stream = result.toDataStreamResponse();
-    const reader = stream.body?.getReader();
-    const decoder = new TextDecoder();
-
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split("\n")) {
-          if (line.startsWith("0:")) {
-            try {
-              fullText += safeJsonParse(line.slice(2));
-            } catch {
-              // skip unparseable lines
-            }
-          }
-        }
-      }
-    }
-
-    const articles: Article[] = (safeJsonParse(fullText) as Omit<Article, "id" | "url" | "publishedAt">[]).map((a, i) => ({
+    const articles: Article[] = (safeJsonParse(text) as Omit<Article, "id" | "url" | "publishedAt">[]).map((a, i) => ({
       ...a,
       id: `ai_article_${Date.now()}_${i}`,
       url: `#ai-research-${i}`,

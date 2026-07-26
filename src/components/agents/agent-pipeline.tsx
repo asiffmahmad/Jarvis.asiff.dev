@@ -121,127 +121,41 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
   const [copied, setCopied] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const hasNavigatedRef = useRef(false);
-  const [hasFailedOnce, setHasFailedOnce] = useState(false);
-  const [loopFeedback, setLoopFeedback] = useState<string | null>(null);
 
   const [steps, setSteps] = useState<PipelineStep[]>([
     {
-      id: "prompt_agent",
-      name: "Strategic Planner",
-      description: "Optimizes input constraints",
+      id: "automation_planner",
+      name: "Automation Planner",
+      description: "Plans tasks and structures automated posts",
       status: "pending",
       result: "",
-      systemPrompt: `You are an AI Prompt Optimization Expert. Analyze the user's input topic, expand it with targeted contexts, search terms, and establish platform-specific content parameters. Return the output as optimized guidelines.`,
-      operation: "Optimizing vectors...",
-      color: "#34F5D0", // Cyan
-      icon: Cpu,
-      x: 70,
-      y: 210,
-    },
-    {
-      id: "research_agent",
-      name: "Web Intelligence",
-      description: "Gathers statistics and trends",
-      status: "pending",
-      result: "",
-      systemPrompt: `You are a Research Analyst. Thoroughly analyze the optimized prompt guidelines and produce:
-1. Executive summary of target topics.
-2. 3-4 key analytical findings and statistics.
-3. Industry insights.
-Format cleanly with Markdown headers.`,
-      operation: "Harvesting web data...",
-      color: "#A061FF", // Purple
-      icon: Search,
-      x: 220,
-      y: 60,
-    },
-    {
-      id: "research_validation",
-      name: "Fact Auditor",
-      description: "Sanity checks stats & claims",
-      status: "pending",
-      result: "",
-      systemPrompt: `You are a Data Validation Expert. Review the provided research output. Identify any potential logical inconsistencies, missing sources, or lack of clarity. Summarize validated findings.`,
-      operation: "Auditing facts...",
-      color: "#00E676", // Emerald
-      icon: ShieldCheck,
-      x: 430,
-      y: 60,
-    },
-    {
-      id: "content_creation",
-      name: "Copywriter",
-      description: "Drafts layout captions",
-      status: "pending",
-      result: "",
-      systemPrompt: `You are a Content Creator. Review the validated research and draft a social media post.
-If you receive feedback regarding a missing Call-To-Action (CTA) or insufficient details, you MUST fix it.
-Return the output as a draft post.`,
-      operation: "Drafting layout...",
-      color: "#FF4081", // Pink
-      icon: PenTool,
-      x: 580,
-      y: 210,
-    },
-    {
-      id: "content_polish",
-      name: "SEO Optimizer",
-      description: "Formulates JSON metadata & hashtags",
-      status: "pending",
-      result: "",
-      systemPrompt: `You are a Content Polisher. Review the content draft and format it for social media.
-Format the final output strictly as JSON with this structure (do not include code fences):
+      systemPrompt: `You are the overarching Automation Planner Agent. You control the full application's automation strategy. 
+Analyze the user's input topic and generate a daily automated content plan, including predefined AI news posts.
+Return the output STRICTLY as a JSON structure (no markdown or code fences) matching this format:
 {
   "title": "Post Title",
-  "caption": "substantive caption with layout spacing",
+  "caption": "Your detailed plan and daily AI news post",
   "hashtags": ["tag1", "tag2"],
   "mediaIdeas": ["idea1", "idea2"],
   "callToAction": "clear call to action",
   "platform": "linkedin",
-  "bestPostingTime": "Best posting time"
+  "bestPostingTime": "09:00 AM"
 }`,
-      operation: "Generating JSON...",
-      color: "#FF9100", // Orange
-      icon: Layout,
-      x: 430,
-      y: 360,
-    },
-    {
-      id: "jarvis_agent",
-      name: "JARVIS Auditor",
-      description: "Performs strict audits and approval",
-      status: "pending",
-      result: "",
-      systemPrompt: `You are JARVIS, the master content supervisor. Audit the polished post details.
-Evaluate the post for tone, structure, and presence of a Call-to-Action (CTA).
-If the post passes audits, write a validation summary approving the post.`,
-      operation: "JARVIS quality audit...",
-      color: "#FF1744", // Ruby Red
-      icon: ShieldAlert,
-      x: 220,
-      y: 360,
-    },
+      operation: "Planning automation...",
+      color: "#34F5D0", // Cyan
+      icon: Cpu,
+      x: 325,
+      y: 210,
+    }
   ]);
 
-  // Curved Bezier Connection Path coordinates corresponding to step indices
-  const connectionPaths = [
-    "M 70 210 C 70 110, 130 60, 220 60", // 0 -> 1 (Planner -> Web Intel)
-    "M 220 60 C 290 90, 360 90, 430 60", // 1 -> 2 (Web Intel -> Fact Auditor)
-    "M 430 60 C 520 60, 580 110, 580 210", // 2 -> 3 (Fact Auditor -> Copywriter)
-    "M 580 210 C 580 310, 520 360, 430 360", // 3 -> 4 (Copywriter -> SEO Optimizer)
-    "M 430 360 C 360 330, 290 330, 220 360", // 4 -> 5 (SEO Optimizer -> JARVIS Auditor)
-  ];
-
-  // Failure loop path: Jarvis back to Copywriter (curved under sweep)
-  const jarvisFeedbackPath = "M 220 360 C 220 440, 580 440, 580 210";
+  const connectionPaths: string[] = [];
 
   const reset = useCallback(() => {
     setSteps(s => s.map(st => ({ ...st, status: "pending" as const, result: "" })));
     setCurrentStepIndex(-1);
     setPost(null);
     setIsRunning(false);
-    setHasFailedOnce(false);
-    setLoopFeedback(null);
     abortRef.current = null;
     hasNavigatedRef.current = false;
   }, []);
@@ -254,61 +168,40 @@ If the post passes audits, write a validation summary approving the post.`,
     }
   }, [initialTopic]);
 
-  const runPipelineFromStep = async (startIndex: number, promptInput: string, isFailedAttempt: boolean) => {
+  const runPipelineFromStep = async (startIndex: number, promptInput: string) => {
     if (!abortRef.current) abortRef.current = new AbortController();
     
-    let currentInput = promptInput;
-    let polishedResult = "";
     setIsRunning(true);
 
     try {
-      for (let i = startIndex; i < steps.length; i++) {
-        setCurrentStepIndex(i);
-        setSteps(s => {
-          const c = [...s];
-          c[i] = { ...c[i], status: "running", result: "" };
-          return c;
-        });
+      setCurrentStepIndex(0);
+      setSteps(s => {
+        const c = [...s];
+        c[0] = { ...c[0], status: "running", result: "" };
+        return c;
+      });
 
-        if (i === 3 && isFailedAttempt) {
+      const agentPrompt = `Input Data:\n${promptInput}\n\nUser Theme: ${topic.trim()}`;
+      const result = await streamAgent(
+        steps[0].systemPrompt,
+        agentPrompt,
+        (text) => {
           setSteps(s => {
             const c = [...s];
-            c[3] = { ...c[3], operation: "Iterating draft with Jarvis feedback..." };
+            c[0] = { ...c[0], result: text };
             return c;
           });
-        }
+        },
+        abortRef.current.signal,
+      );
 
-        const agentPrompt = `Input Data:\n${currentInput}\n\nUser Theme: ${topic.trim()}`;
-        const result = await streamAgent(
-          steps[i].systemPrompt,
-          agentPrompt,
-          (text) => {
-            setSteps(s => {
-              const c = [...s];
-              c[i] = { ...c[i], result: text };
-              return c;
-            });
-          },
-          abortRef.current.signal,
-        );
+      setSteps(s => {
+        const c = [...s];
+        c[0] = { ...c[0], status: "success", result };
+        return c;
+      });
 
-        setSteps(s => {
-          const c = [...s];
-          c[i] = { ...c[i], status: "success", result };
-          return c;
-        });
-
-        currentInput = result;
-        if (steps[i].id === "content_polish") {
-          polishedResult = result;
-        }
-
-        if (i === 5 && !isFailedAttempt && !hasFailedOnce) {
-          throw new Error("VALIDATION_FAILED");
-        }
-      }
-
-      const finalJson = polishedResult || currentInput;
+      const finalJson = result;
       const parsed = tryParsePost(finalJson);
       if (parsed) {
         setPost({
@@ -328,43 +221,18 @@ If the post passes audits, write a validation summary approving the post.`,
       }
       setIsRunning(false);
     } catch (err) {
-      if ((err as Error).message === "VALIDATION_FAILED") {
-        setHasFailedOnce(true);
-        setLoopFeedback("Validation Failed: Content lacks a Call-To-Action (CTA). Rerouting back to Copywriter Agent.");
-        
-        setSteps(s => {
-          const c = [...s];
-          c[5] = { 
-            ...c[5], 
-            status: "failed_validation", 
-            result: "[JARVIS COMPLIANCE AUDIT]\nSTATUS: REJECTED\nREASON: Missing clear call-to-action (CTA).\nACTION: Re-routing content creation agent to expand layout with CTA."
-          };
-          return c;
-        });
-        
-        setIsRunning(false);
-        setTimeout(() => {
-          setSteps(s => {
-            const c = [...s];
-            c[3] = { ...c[3], status: "pending", result: "" };
-            c[4] = { ...c[4], status: "pending", result: "" };
-            c[5] = { ...c[5], status: "pending", result: "" };
-            return c;
-          });
-          const feedbackInput = `${steps[2].result}\n\n[FEEDBACK FROM JARVIS]: Add a strong Call-To-Action (CTA) at the end.`;
-          runPipelineFromStep(3, feedbackInput, true);
-        }, 4000);
-      } else {
-        setIsRunning(false);
-        setSteps(s => s.map(st => st.status === "running" ? { ...st, status: "error" as const, result: (err as Error).message } : st));
-      }
+      setIsRunning(false);
+      setSteps(s => s.map(st => st.status === "running" ? { ...st, status: "error" as const, result: (err as Error).message } : st));
     }
   };
 
   const handleStart = async () => {
     if (!topic.trim() || isRunning) return;
     reset();
-    runPipelineFromStep(0, topic.trim(), false);
+    const input = initialContext
+      ? `Topic: ${topic.trim()}\n\nSource Context/Article Content:\n${initialContext}`
+      : topic.trim();
+    runPipelineFromStep(0, input);
   };
 
   // Auto-navigate to /create when a post is generated successfully
@@ -531,29 +399,7 @@ If the post passes audits, write a validation summary approving the post.`,
                 );
               })}
 
-              {/* Reroute failure line curved path (JARVIS back to Copywriter) */}
-              {hasFailedOnce && (
-                <g>
-                  {/* Curved Loop Line */}
-                  <path
-                    d={jarvisFeedbackPath}
-                    fill="none"
-                    stroke={isRunning && currentStepIndex === 3 ? "#FF1744" : "rgba(255,23,68,0.12)"}
-                    strokeWidth={isRunning && currentStepIndex === 3 ? "2" : "1"}
-                    strokeDasharray="4,4"
-                  />
-                  {/* Glowing Flowing Failure Dot packets */}
-                  {isRunning && currentStepIndex === 3 && (
-                    <circle r="5" fill="#FF1744" filter="url(#neon-glow)">
-                      <animateMotion
-                        dur="2.5s"
-                        repeatCount="indefinite"
-                        path={jarvisFeedbackPath}
-                      />
-                    </circle>
-                  )}
-                </g>
-              )}
+
             </svg>
 
             {/* Render Nodes Absolutely atop the SVG coords */}
@@ -655,22 +501,7 @@ If the post passes audits, write a validation summary approving the post.`,
           {/* Terminal Logs & Output Container */}
           <div className="flex-1 p-4 overflow-y-auto font-mono text-xs leading-relaxed space-y-4 text-left">
             
-            <AnimatePresence>
-              {loopFeedback && isRunning && currentStepIndex === 3 && (
-                <motion.div
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="p-3 rounded-lg border border-red-500/20 bg-red-500/5 text-red-400 text-[11px] space-y-1 animate-pulse"
-                >
-                  <div className="flex items-center gap-1.5 font-bold uppercase text-xs">
-                    <RefreshCw className="size-3.5 animate-spin" />
-                    <span>Quality Check Rejected — Rerouting</span>
-                  </div>
-                  <p>{loopFeedback}</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
+
 
             {/* active step text or logs stream */}
             {activeStep && (
@@ -737,10 +568,6 @@ If the post passes audits, write a validation summary approving the post.`,
                       ))}
                     </div>
                   )}
-                  <span className="text-[9px] font-mono text-jarvis-primary flex items-center gap-2 pt-2 border-t border-jarvis-panel-border/20">
-                    <Loader2 className="size-3 animate-spin" />
-                    Redirecting to Drafts review dashboard...
-                  </span>
                 </div>
               </motion.div>
             )}

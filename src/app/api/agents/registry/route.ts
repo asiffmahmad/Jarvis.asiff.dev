@@ -20,6 +20,8 @@ export async function POST(req: Request) {
         description: body.description,
         systemPrompt: body.systemPrompt || "You are a helpful AI.",
         model: body.model || "gpt-4",
+        apiProvider: body.apiProvider || "groq",
+        usageLeft: body.usageLeft !== undefined ? body.usageLeft : 1000,
         isActive: true,
       }
     });
@@ -27,5 +29,25 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Failed to create agent" }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const body = await req.json();
+    const { id, ...updateData } = body;
+    
+    if (!id) {
+      return NextResponse.json({ error: "Agent ID is required" }, { status: 400 });
+    }
+
+    const agent = await prisma.agent.update({
+      where: { id },
+      data: updateData,
+    });
+    return NextResponse.json(agent);
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: "Failed to update agent" }, { status: 500 });
   }
 }

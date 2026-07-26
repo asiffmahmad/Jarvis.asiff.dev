@@ -21,6 +21,8 @@ import {
   Bot,
   ChevronLeft,
   ChevronRight,
+  BookOpen,
+  Sliders,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
@@ -32,7 +34,9 @@ import { useTheme } from "@/lib/theme";
 const mainNavItems = [
   { id: "mission-control", label: "Mission Control", icon: LayoutDashboard, href: "/" },
   { id: "create", label: "Create Content", icon: PenSquare, href: "/create" },
+  { id: "research", label: "Knowledge Hub", icon: BookOpen, href: "/research" },
   { id: "agents", label: "AI Agents", icon: Bot, href: "/agents" },
+  { id: "agent-settings", label: "Agent Settings", icon: Sliders, href: "/agents/settings" },
   { id: "scheduler", label: "Schedule", icon: CalendarDays, href: "/scheduler" },
   { id: "platforms", label: "Platforms", icon: Share2, href: "/platforms" },
   { id: "settings", label: "Settings", icon: Settings, href: "/settings" },
