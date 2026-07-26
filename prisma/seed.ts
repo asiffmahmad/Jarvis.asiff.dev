@@ -53,16 +53,16 @@ async function main() {
     console.log(`Created admin user: ${admin.email}`);
   }
 
-  // 2. Default Prompt Categories
-  const promptCategories = ['System', 'Copywriting', 'Development', 'Analysis'];
-  for (const name of promptCategories) {
-    await prisma.promptCategory.upsert({
-      where: { name },
-      update: {},
-      create: { name },
-    });
-  }
-  console.log('Created default prompt categories.');
+  // 2. Default Prompt Categories (Commented out as PromptCategory is not in schema)
+  // const promptCategories = ['System', 'Copywriting', 'Development', 'Analysis'];
+  // for (const name of promptCategories) {
+  //   await prisma.promptCategory.upsert({
+  //     where: { name },
+  //     update: {},
+  //     create: { name },
+  //   });
+  // }
+  // console.log('Created default prompt categories.');
 
   // 3. Default Feed Categories
   const feedCategories = ['AI Research', 'Tech News', 'Engineering'];
