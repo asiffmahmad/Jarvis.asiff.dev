@@ -3,7 +3,8 @@
 import { motion } from "framer-motion";
 import { useEffect, useState, useMemo } from "react";
 import { AgentNode } from "./agent-node";
-import { Brain, Activity, Terminal } from "lucide-react";
+import { Brain } from "lucide-react";
+import type { AgentsState } from "@/lib/agents/use-agents";
 
 interface Agent {
   id: string;
@@ -14,203 +15,287 @@ interface Agent {
 interface AICoreProps {
   onSelectAgent: (id: string | null) => void;
   selectedAgent: string | null;
+  agentsState: AgentsState;
 }
 
-const COLORS = ["#FF3366", "#00E5FF", "#FFD500", "#B200FF", "#00FF66", "#FF9900", "#34F5D0"];
-
-// Fake logs for the live terminal HUD
-const FAKE_LOGS = [
-  "[SYS] Kernel booted. Nominal.",
-  "[NET] Quantum routing enabled...",
-  "[AI] Synapse calibration: 99.9%",
-  "[WARN] High packet volume detected.",
-  "[SEC] Encryption layer 7 active.",
-  "[NODE] JARVIS handshake complete.",
-  "[DB] Indexing 1,402 new vectors...",
+// Exactly 8 positions to match the reference image visual layout
+const STANDARD_SLOTS = [
+  { name: "CONTENT CREATOR", angle: (270 * Math.PI) / 180, defaultId: "content-publisher" },
+  { name: "DATA ANALYST", angle: (315 * Math.PI) / 180, defaultId: "data-analyst" },
+  { name: "SOCIAL MANAGER", angle: (0 * Math.PI) / 180, defaultId: "social-manager" },
+  { name: "SEO OPTIMIZER", angle: (45 * Math.PI) / 180, defaultId: "seo-optimizer" },
+  { name: "EMAIL EXPENSE AGENT", angle: (90 * Math.PI) / 180, defaultId: "email-expense-agent" },
+  { name: "STRATEGIC PLANNER", angle: (135 * Math.PI) / 180, defaultId: "strategic-planner" },
+  { name: "AUTOMATION ENGINE", angle: (180 * Math.PI) / 180, defaultId: "automation-planner" },
+  { name: "RESEARCH AGENT", angle: (225 * Math.PI) / 180, defaultId: "research-agent" },
 ];
 
-export function AICoreVisualization({ onSelectAgent, selectedAgent }: AICoreProps) {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [logs, setLogs] = useState<string[]>([]);
-  const [wave, setWave] = useState<number[]>([20, 40, 80, 40, 20, 60, 90, 50, 30, 70]);
+const COLORS = ["#00F5D4", "#4CC9F0", "#FFC857", "#FF5C8A", "#38F9A8", "#B200FF"];
 
+// Drifting HUD items configured to slide fully across the dashboard coordinates
+const DRIFTING_HUD_ITEMS = [
+  { id: 1, text: "SYS_SECTOR_A4", startX: "-15%", endX: "115%", startY: "15%", endY: "20%", duration: 42 },
+  { id: 2, text: "NET_LINK_0x89", startX: "115%", endX: "-15%", startY: "25%", endY: "30%", duration: 58 },
+  { id: 3, text: "[ TRACER_PORT_OK ]", startX: "12%", endX: "18%", startY: "-15%", endY: "115%", duration: 52 },
+  { id: 4, text: "COORD_X: 480.1", startX: "85%", endX: "78%", startY: "115%", endY: "-15%", duration: 64 },
+  { id: 5, text: "SYNC_RATIO: 1.00", startX: "-15%", endX: "115%", startY: "82%", endY: "78%", duration: 38 },
+  { id: 6, text: "CORE_TEMP_36.8C", startX: "115%", endX: "-15%", startY: "85%", endY: "80%", duration: 48 },
+];
+
+export function AICoreVisualization({ onSelectAgent, selectedAgent, agentsState }: AICoreProps) {
+  const { executionState, activeAgentId, agents: registryAgents } = agentsState;
+  const [dbAgents, setDbAgents] = useState<Agent[]>([]);
+
+  // Fetch agents to coordinate DB matching
   useEffect(() => {
     fetch(`/api/agents/registry?t=${Date.now()}`, { cache: "no-store" })
       .then(r => r.json())
       .then((data: Agent[]) => {
-        // Map isActive to boolean in case database returns 1/0 (tinyint)
-        setAgents(data.filter(a => a.isActive === true || String(a.isActive) === "1" || String(a.isActive) === "true"));
+        setDbAgents(data.filter(a => a.isActive === true || String(a.isActive) === "1" || String(a.isActive) === "true"));
       })
       .catch(console.error);
-
-    // Terminal log generator
-    const logInterval = setInterval(() => {
-      setLogs(prev => {
-        const newLog = FAKE_LOGS[Math.floor(Math.random() * FAKE_LOGS.length)];
-        const ts = new Date().toISOString().split('T')[1].slice(0, 8);
-        const logLine = `${ts} > ${newLog}`;
-        return [...prev.slice(-6), logLine];
-      });
-    }, 1500);
-
-    // Waveform generator
-    const waveInterval = setInterval(() => {
-      setWave(prev => prev.map(() => Math.floor(Math.random() * 100)));
-    }, 400);
-
-    return () => {
-      clearInterval(logInterval);
-      clearInterval(waveInterval);
-    };
-  }, []);
+  }, [registryAgents.length]);
 
   const positionedAgents = useMemo(() => {
-    return agents.map((agent, i) => {
-      const angle = (i / agents.length) * Math.PI * 2;
-      const radiusX = 380; // Pushed out to make room for rings
+    return STANDARD_SLOTS.map((slot, i) => {
+      // Find matching agent in DB
+      const matchingAgent = dbAgents.find(
+        (a) =>
+          a.name.toUpperCase().replace("-", " ") === slot.name ||
+          a.id === slot.defaultId ||
+          a.name.toUpperCase().includes(slot.name.split(" ")[0])
+      );
+
+      const radiusX = 390; 
       const radiusY = 220; 
+
+      const agentId = matchingAgent?.id || slot.defaultId;
+      const isExecuting = agentId === activeAgentId && executionState.status === "running";
+
       return {
-        ...agent,
-        x: Math.cos(angle) * radiusX,
-        y: Math.sin(angle) * radiusY,
-        color: COLORS[i % COLORS.length]
+        id: agentId,
+        name: slot.name,
+        angle: slot.angle,
+        x: Math.cos(slot.angle) * radiusX,
+        y: Math.sin(slot.angle) * radiusY,
+        color: COLORS[i % COLORS.length],
+        isExecuting,
+        matchingAgent,
       };
     });
-  }, [agents]);
+  }, [dbAgents, activeAgentId, executionState.status]);
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-jarvis-bg-deepest font-mono select-none">
-      
-      {/* Background Dark Noise */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(52,245,208,0.08)_0%,rgba(0,0,0,0.9)_80%)] pointer-events-none" />
-      <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none" />
+    <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-[#05070a] font-mono select-none">
+      {/* Sci-Fi Dot Grid Background */}
+      <div 
+        className="absolute inset-0 pointer-events-none opacity-[0.05]"
+        style={{
+          backgroundImage: `
+            radial-gradient(circle, #00F5D4 1.2px, transparent 1.2px),
+            linear-gradient(to right, rgba(0,245,212,0.05) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(0,245,212,0.05) 1px, transparent 1px)
+          `,
+          backgroundSize: "24px 24px, 48px 48px, 48px 48px",
+          backgroundPosition: "center center",
+        }}
+      />
 
-      {/* --- FLOATING COCKPIT HUDs --- */}
-      
-      {/* Top Anchor: Global System Status */}
-      <div className="absolute top-12 left-1/2 -translate-x-1/2 flex gap-8 z-30 pointer-events-none">
-        <div className="flex flex-col items-center">
-          <span className="text-[9px] text-[#00E5FF]/70 tracking-[0.3em]">CORE TEMP</span>
-          <span className="text-xs text-[#00E5FF] font-bold">34.2°C</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <span className="text-[9px] text-[#FF9900]/70 tracking-[0.3em]">SYSTEM STATE</span>
-          <span className="text-xs text-[#FF9900] font-bold animate-pulse">LOCKED & SECURE</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <span className="text-[9px] text-[#34F5D0]/70 tracking-[0.3em]">UPTIME</span>
-          <span className="text-xs text-[#34F5D0] font-bold">99.999%</span>
-        </div>
-      </div>
+      {/* Cyber Sweep Scanline Grid (Hollywood HUD style) */}
+      <motion.div 
+        className="absolute w-full h-[1.5px] bg-gradient-to-r from-transparent via-[#00E8FF]/20 to-transparent pointer-events-none z-10"
+        animate={{ y: ["-45vh", "45vh"] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+      />
 
-      {/* Left HUD: Network Waveform */}
-      {/*
-      <div className="absolute left-10 top-1/2 -translate-y-1/2 w-48 p-4 rounded-xl bg-black/40 border border-[#00E5FF]/20 backdrop-blur-md z-30 pointer-events-none">
-        <div className="flex items-center gap-2 mb-3">
-          <Activity className="size-4 text-[#00E5FF]" />
-          <span className="text-[10px] text-[#00E5FF] tracking-[0.2em] font-bold">NET_LOAD</span>
-        </div>
-        <div className="flex items-end gap-1 h-16">
-          {wave.map((h, i) => (
-            <div key={i} className="flex-1 bg-[#00E5FF]/50 transition-all duration-300 rounded-t-sm" style={{ height: `${Math.max(10, h)}%` }} />
-          ))}
-        </div>
-        <div className="mt-2 pt-2 border-t border-[#00E5FF]/20 flex justify-between">
-          <span className="text-[9px] text-[#00E5FF]/60">THROUGHPUT</span>
-          <span className="text-[9px] text-[#00E5FF]">{(wave[0] * 12).toFixed(1)} GB/s</span>
-        </div>
-      </div>
-      */}
+      {/* Volumetric Dark Gradients */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_20%,#05070A_80%)] pointer-events-none z-0" />
 
-      {/* Right HUD: Live Terminal */}
-      {/*
-      <div className="absolute right-10 top-1/2 -translate-y-1/2 w-64 p-4 rounded-xl bg-black/40 border border-[#FF9900]/20 backdrop-blur-md z-30 pointer-events-none shadow-[0_0_20px_rgba(255,153,0,0.05)]">
-        <div className="flex items-center gap-2 mb-3">
-          <Terminal className="size-4 text-[#FF9900]" />
-          <span className="text-[10px] text-[#FF9900] tracking-[0.2em] font-bold">LIVE_STREAM</span>
-        </div>
-        <div className="space-y-1">
-          {logs.map((log, i) => (
-            <div key={i} className="text-[9px] text-[#FF9900]/80 whitespace-nowrap overflow-hidden">
-              {log}
+      {/* --- DRIFTING CYBER HUD ELEMENTS (Slide fully across the dashboard coordinates) --- */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        {DRIFTING_HUD_ITEMS.map((item) => (
+          <motion.div
+            key={item.id}
+            className="absolute flex items-center gap-2 opacity-[0.12]"
+            initial={{ left: item.startX, top: item.startY }}
+            animate={{ 
+              left: [item.startX, item.endX], 
+              top: [item.startY, item.endY] 
+            }}
+            transition={{
+              duration: item.duration,
+              repeat: Infinity,
+              ease: "linear"
+            }}
+          >
+            <div className="w-8 h-[1px] bg-[#00E8FF] relative">
+              {/* Corner Bracket Cap */}
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[1px] h-1.5 bg-[#00E8FF]" />
             </div>
-          ))}
-        </div>
+            <span className="text-[7.5px] text-[#00E8FF] tracking-[0.25em] font-mono font-bold whitespace-nowrap">
+              {item.text}
+            </span>
+          </motion.div>
+        ))}
       </div>
-      */}
 
-      {/* --- HOLOGRAPHIC DATA RINGS --- */}
-      
-      <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none opacity-40">
-        {/* Ring 1 (Outer) */}
+      {/* Concentric Scan Rings & Cyber HUD Ticks */}
+      <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none opacity-30">
+        {/* Holographic Radar Ring 1 */}
         <motion.div 
-          className="absolute w-[600px] h-[600px] rounded-full border border-dashed border-[#00E5FF]/30"
+          className="absolute w-[760px] h-[760px] rounded-full border border-dashed border-[#00E8FF]/15"
           animate={{ rotate: 360 }}
-          transition={{ duration: 120, repeat: Infinity, ease: "linear" }}
-        >
-          {/* Degree Markers */}
-          {['0°', '90°', '180°', '270°'].map((deg, i) => (
-            <div key={deg} className="absolute text-[8px] text-[#00E5FF] -translate-x-1/2 -translate-y-1/2"
-                 style={{ 
-                   top: i === 0 ? '-15px' : i === 2 ? '615px' : '50%',
-                   left: i === 3 ? '-15px' : i === 1 ? '615px' : '50%',
-                   transform: `translate(-50%, -50%) rotate(${-i * 90}deg)`
-                 }}>
-              {deg}
-            </div>
-          ))}
-        </motion.div>
-
-        {/* Ring 2 (Middle) */}
-        <motion.div 
-          className="absolute w-[480px] h-[480px] rounded-full border-[2px] border-dotted border-[#FF9900]/30"
-          animate={{ rotate: -360 }}
-          transition={{ duration: 80, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 55, repeat: Infinity, ease: "linear" }}
         />
 
-        {/* Ring 3 (Inner Target) */}
+        {/* Radar Dial Ticks */}
+        <div 
+          className="absolute w-[600px] h-[600px] rounded-full border-[1.5px] border-dashed border-[#00E8FF]/20"
+          style={{ strokeDasharray: "4 24" }}
+        />
+
+        {/* Diagonal Highlights (Matched Orange Ticks from Reference) */}
         <motion.div 
-          className="absolute w-[360px] h-[360px] rounded-full border border-[#34F5D0]/20 flex items-center justify-center"
-          animate={{ rotate: 360 }}
+          className="absolute w-[620px] h-[620px] rounded-full border border-dashed border-[#FF9900]/25"
+          style={{ strokeDasharray: "40 180" }}
+          animate={{ rotate: -360 }}
           transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-        >
-          {/* Crosshairs */}
-          <div className="absolute top-0 bottom-0 w-[1px] bg-[#34F5D0]/30" />
-          <div className="absolute left-0 right-0 h-[1px] bg-[#34F5D0]/30" />
-        </motion.div>
+        />
+
+        {/* Bounded Target Ring (Visual Intercept) */}
+        <motion.div 
+          className="absolute w-[530px] h-[530px] rounded-full border border-[#FF5C8A]/10 border-t-[#00E8FF]/30"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        />
+
+        {/* Grid Crosshairs */}
+        <div className="absolute w-[440px] h-[440px] rounded-full border border-[#00E8FF]/5 flex items-center justify-center">
+          <div className="absolute w-full h-[1px] bg-[#00E8FF]/8" />
+          <div className="absolute h-full w-[1px] bg-[#00E8FF]/8" />
+        </div>
       </div>
 
-      {/* --- SVG NEURAL BEAMS --- */}
+      {/* --- SVG NEURAL DATA BEAMS & MESH WEB (Matches Reference Colors) --- */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" style={{ overflow: "visible" }}>
         <g transform="translate(50%, 50%)">
-          {positionedAgents.map((agent) => {
-            const controlPointX = agent.x * 0.4;
-            const controlPointY = agent.y * -0.4; // Sharp arc
-            const pathData = `M 0 0 Q ${controlPointX} ${controlPointY} ${agent.x} ${agent.y}`;
+          {/* 1. Draw AGENT-TO-AGENT mesh connections (Matched translucent blue & orange highlights) */}
+          {positionedAgents.map((agent, i) => {
+            const nextAgent = positionedAgents[(i + 1) % positionedAgents.length];
+            
+            // Draw a subtle curved arc between neighbors
+            const midX = (agent.x + nextAgent.x) * 0.92;
+            const midY = (agent.y + nextAgent.y) * 0.92;
+            const pathData = `M ${agent.x} ${agent.y} Q ${midX} ${midY} ${nextAgent.x} ${nextAgent.y}`;
 
             return (
-              <g key={`path-${agent.id}`}>
-                {/* Thick glowing static beam */}
-                <path d={pathData} fill="none" stroke={agent.color} strokeWidth="2" opacity="0.15" />
+              <g key={`mesh-${agent.id}-${nextAgent.id}`}>
+                {/* Glowing mesh line (Muted Cyan/Blue) */}
+                <path 
+                  d={pathData} 
+                  fill="none" 
+                  stroke="rgba(0, 232, 255, 0.12)" 
+                  strokeWidth="1.2" 
+                  strokeDasharray="4 8"
+                />
                 
-                {/* Intense Data Packet */}
+                {/* Orange/Amber Mesh Particle Traveler */}
                 <motion.path
                   d={pathData}
                   fill="none"
-                  stroke={agent.color}
-                  strokeWidth="4"
+                  stroke="#FFC857"
+                  strokeWidth="2"
+                  style={{ filter: "drop-shadow(0 0 4px #FFC857)" }}
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ 
+                    pathLength: [0, 1],
+                    opacity: [0, 0.7, 0]
+                  }}
+                  transition={{
+                    duration: 2.5 + Math.random() * 1.5,
+                    repeat: Infinity,
+                    ease: "linear",
+                    delay: Math.random() * 2
+                  }}
+                />
+              </g>
+            );
+          })}
+
+          {/* 2. Draw BRAIN-TO-AGENT connections (Electric Cyan & Neon Green highlights) */}
+          {positionedAgents.map((agent, i) => {
+            const controlPointX = agent.x * 0.45;
+            const controlPointY = agent.y * -0.45;
+            
+            const pathData = `M 0 0 Q ${controlPointX} ${controlPointY} ${agent.x} ${agent.y}`;
+
+            // Left and Right parallel offset curves
+            const offsetL = `M -3 -3 Q ${controlPointX - 4} ${controlPointY - 4} ${agent.x - 4} ${agent.y - 4}`;
+            const offsetR = `M 3 3 Q ${controlPointX + 4} ${controlPointY + 4} ${agent.x + 4} ${agent.y + 4}`;
+
+            return (
+              <g key={`path-${agent.id}`}>
+                {/* Double Parallel Conduit Rails (Muted Cyan) */}
+                <path 
+                  d={offsetL} 
+                  fill="none" 
+                  stroke={agent.isExecuting ? "#3CF9A0" : "rgba(0,232,255,0.08)"} 
+                  strokeWidth="0.8" 
+                />
+                <path 
+                  d={offsetR} 
+                  fill="none" 
+                  stroke={agent.isExecuting ? "#3CF9A0" : "rgba(0,232,255,0.08)"} 
+                  strokeWidth="0.8" 
+                />
+
+                {/* Primary Core Neural Beam (Neon Electric Blue/Cyan) */}
+                <path 
+                  d={pathData} 
+                  fill="none" 
+                  stroke={agent.isExecuting ? "#3CF9A0" : "#00E8FF"} 
+                  strokeWidth={agent.isExecuting ? "2" : "1"} 
+                  opacity={agent.isExecuting ? "0.85" : "0.35"} 
+                  className="transition-all duration-500"
+                />
+
+                {/* Core Outflow Connection Port Indicator */}
+                <circle 
+                  cx={agent.x * 0.18} 
+                  cy={agent.y * 0.18} 
+                  r="2.5" 
+                  fill={i % 2 === 0 ? "#FF9900" : "#00E8FF"} 
+                  opacity="0.7"
+                />
+
+                {/* Agent Capsule Connection Port Dot */}
+                <circle 
+                  cx={agent.x} 
+                  cy={agent.y} 
+                  r="3.5" 
+                  fill={agent.isExecuting ? "#3CF9A0" : "#00E8FF"} 
+                  className="animate-pulse"
+                  style={{ filter: `drop-shadow(0 0 5px ${agent.isExecuting ? "#3CF9A0" : "#00E8FF"})` }}
+                />
+                
+                {/* Flowing Energy Packets */}
+                <motion.path
+                  d={pathData}
+                  fill="none"
+                  stroke={agent.isExecuting ? "#3CF9A0" : (i % 2 === 0 ? "#FFC857" : "#00E8FF")}
+                  strokeWidth={agent.isExecuting ? "4.5" : "3"}
                   strokeLinecap="round"
-                  style={{ filter: `drop-shadow(0 0 10px ${agent.color})` }}
+                  style={{ filter: `drop-shadow(0 0 6px ${agent.isExecuting ? "#3CF9A0" : (i % 2 === 0 ? "#FFC857" : "#00E8FF")})` }}
                   initial={{ pathLength: 0, opacity: 0 }}
                   animate={{ 
                     pathLength: [0, 1],
                     opacity: [0, 1, 0]
                   }}
                   transition={{
-                    duration: 1.5 + Math.random(),
+                    duration: agent.isExecuting ? 0.65 : 1.7 + Math.random() * 0.5,
                     repeat: Infinity,
-                    ease: "circOut",
-                    delay: Math.random() * 2
+                    ease: "easeInOut",
+                    delay: Math.random() * 1.2
                   }}
                 />
               </g>
@@ -219,51 +304,103 @@ export function AICoreVisualization({ onSelectAgent, selectedAgent }: AICoreProp
         </g>
       </svg>
 
-      {/* --- THE SYNAPTIC CORE --- */}
-      <div className="absolute z-20 w-48 h-48 rounded-full flex items-center justify-center pointer-events-none">
+      {/* --- THE HOLOGRAPHIC AI CORE --- */}
+      <div className="absolute z-20 w-64 h-64 rounded-full flex items-center justify-center pointer-events-none">
         
-        {/* Core Breathing Glow */}
+        {/* Core Volumetric Aura */}
         <motion.div
-          className="absolute inset-0 rounded-full blur-[60px]"
+          className="absolute inset-0 rounded-full blur-[80px]"
           animate={{
-            backgroundColor: ["rgba(0,229,255,0.15)", "rgba(0,229,255,0.3)", "rgba(0,229,255,0.15)"],
-            scale: [1, 1.3, 1]
+            backgroundColor: [
+              executionState.status === "running" ? "rgba(60,249,160,0.22)" : "rgba(0,232,255,0.15)",
+              executionState.status === "running" ? "rgba(44,203,255,0.32)" : "rgba(44,203,255,0.24)",
+              executionState.status === "running" ? "rgba(60,249,160,0.22)" : "rgba(0,232,255,0.15)"
+            ],
+            scale: executionState.status === "running" ? [1, 1.35, 1] : [1, 1.15, 1]
           }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          transition={{ duration: executionState.status === "running" ? 1.8 : 3.5, repeat: Infinity, ease: "easeInOut" }}
         />
 
-        {/* Technical Ring */}
+        {/* Orbit Ring 1 */}
         <motion.div
-          className="absolute w-36 h-36 rounded-full border-4 border-t-[#00E5FF] border-r-transparent border-b-[#FF9900] border-l-transparent opacity-80"
+          className="absolute w-52 h-52 rounded-full border border-t-[#00E8FF] border-r-transparent border-b-[#FF5C8A]/30 border-l-transparent opacity-85"
           animate={{ rotate: 360 }}
-          transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 7, repeat: Infinity, ease: "linear" }}
         />
 
-        {/* Inner Solid Core */}
-        <div className="relative w-20 h-20 rounded-full bg-black border-2 border-[#00E5FF] flex items-center justify-center overflow-hidden shadow-[0_0_30px_rgba(0,229,255,0.4)]">
-          <motion.div 
-            className="absolute inset-0 bg-[#00E5FF]/20 backdrop-blur-md"
-            animate={{ opacity: [0.3, 0.8, 0.3] }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+        {/* Orbit Ring 2 */}
+        <motion.div
+          className="absolute w-44 h-44 rounded-full border-2 border-r-[#2CCBFF] border-t-transparent border-l-[#FFC857]/50 border-b-transparent opacity-95"
+          animate={{ rotate: -360 }}
+          transition={{ duration: 4.5, repeat: Infinity, ease: "linear" }}
+        />
+
+        {/* Central UI Shield Core Container */}
+        <div 
+          className="relative w-[148px] h-[148px] rounded-full bg-[#070b10]/95 border-[1.5px] flex flex-col items-center justify-center transition-all duration-500"
+          style={{
+            borderColor: executionState.status === "running" ? "#3CF9A0" : "rgba(0,232,255,0.45)",
+            boxShadow: "0 0 35px rgba(0,232,255,0.35), inset 0 0 20px rgba(0,232,255,0.25)"
+          }}
+        >
+          {/* Glass reflections overlay */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent backdrop-blur-md rounded-full pointer-events-none" />
+
+          {/* Brain Hologram */}
+          <Brain 
+            className="w-11 h-11 text-[#00E8FF] drop-shadow-[0_0_12px_rgba(0,232,255,0.85)] z-10 mb-1" 
           />
-          <Brain className="w-8 h-8 text-[#00E5FF] relative z-10" />
+
+          {/* Core Labels matching reference */}
+          <span className="text-[10.5px] font-bold text-white tracking-[0.25em] z-10 leading-none drop-shadow-[0_0_10px_rgba(255,255,255,0.25)]">
+            JARVIS
+          </span>
+          <span className="text-[6.5px] font-semibold text-[#2CCBFF] tracking-[0.2em] uppercase z-10 mt-1.5 scale-90">
+            AI OPERATIONS CORE
+          </span>
+
+          {/* Dynamic Status Dot Indicator */}
+          <div className="flex items-center gap-1.5 mt-2.5 text-[6px] font-mono tracking-widest z-10">
+            <span className="size-[4.5px] bg-[#3CF9A0] rounded-full animate-ping" />
+            <span className="text-[#3CF9A0] font-bold">SYSTEM ONLINE</span>
+          </div>
         </div>
       </div>
 
-      {/* --- FLOATING AGENT NODES --- */}
+      {/* --- FLOATING HOLOGRAPHIC AGENT MODULES (Capsule Hexagons) --- */}
       <div className="absolute inset-0 flex items-center justify-center z-30">
-        {positionedAgents.map((agent) => (
-          <AgentNode
-            key={agent.id}
-            id={agent.id}
-            name={agent.name}
-            color={agent.color}
-            x={agent.x}
-            y={agent.y}
-            isSelected={selectedAgent === agent.id}
-            onClick={() => onSelectAgent(selectedAgent === agent.id ? null : agent.id)}
-          />
-        ))}
+        {positionedAgents.map((agent) => {
+          const isSelected = selectedAgent === agent.id;
+          const isExecuting = agent.isExecuting;
+
+          return (
+            <div 
+              key={agent.id} 
+              className="absolute pointer-events-auto transition-transform duration-500" 
+              style={{ transform: `translate(${agent.x}px, ${agent.y}px)` }}
+            >
+              {/* Symmetrical target reticle rings */}
+              {(isSelected || isExecuting) && (
+                <motion.div
+                  className="absolute -inset-x-8 -inset-y-4 rounded-full border border-dashed border-[#00E8FF]/30 pointer-events-none"
+                  animate={{ rotate: isExecuting ? -360 : 360 }}
+                  transition={{ duration: isExecuting ? 3.5 : 8, repeat: Infinity, ease: "linear" }}
+                />
+              )}
+
+              <AgentNode
+                id={agent.id}
+                name={agent.name}
+                color={isExecuting ? "#3CF9A0" : agent.color}
+                x={0}
+                y={0}
+                isSelected={isSelected}
+                isExecuting={isExecuting}
+                onClick={() => onSelectAgent(isSelected ? null : agent.id)}
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );

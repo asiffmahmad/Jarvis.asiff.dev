@@ -246,6 +246,7 @@ export default function ExpensesPage() {
     "Office Supplies": "bg-[#B200FF]",
     "Marketing/Ads": "bg-[#00FF66]",
     "Utilities/Rent": "bg-[#FF9900]",
+    "Bills": "bg-[#F59E0B]",
     "Services/Fees": "bg-[#FF4D4D]",
     "Income/Credits": "bg-[#10B981]",
     "Miscellaneous": "bg-slate-400"
@@ -582,6 +583,7 @@ export default function ExpensesPage() {
                   <option value="Office Supplies">Office Supplies</option>
                   <option value="Marketing/Ads">Marketing/Ads</option>
                   <option value="Utilities/Rent">Utilities/Rent</option>
+                  <option value="Bills">Bills</option>
                   <option value="Services/Fees">Services/Fees</option>
                   <option value="Miscellaneous">Miscellaneous</option>
                 </select>

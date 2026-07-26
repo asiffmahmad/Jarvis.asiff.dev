@@ -102,6 +102,7 @@ export function TopNav({ onOpenCommandPalette }: TopNavProps) {
         </Tooltip>
 
         {/* Notifications */}
+        {/*
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -123,6 +124,7 @@ export function TopNav({ onOpenCommandPalette }: TopNavProps) {
           </TooltipTrigger>
           <TooltipContent>{notifications} new notifications</TooltipContent>
         </Tooltip>
+        */}
 
         {/* User Profile */}
         <Tooltip>

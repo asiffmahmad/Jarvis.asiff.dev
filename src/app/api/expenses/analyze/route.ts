@@ -25,7 +25,7 @@ Instructions:
    - amount: The numerical value of the transaction (Float). Use POSITIVE values for debits, payments, purchases, and expenses (money outflow). Use NEGATIVE values for credits, refunds, deposits, and income (money inflow).
    - currency: The 3-letter currency code (e.g. USD, EUR, INR, GBP). Default is INR.
    - merchant: The name of the merchant/company/service or bank (e.g. Uber, Amazon, Netflix, Axis Bank, HDFC Bank, Refund).
-   - category: Categorize the transaction. Choose one from: "Software/Hosting", "Travel/Transport", "Meals/Entertainment", "Office Supplies", "Marketing/Ads", "Utilities/Rent", "Services/Fees", "Income/Credits", or "Miscellaneous".
+   - category: Categorize the transaction. Choose one from: "Software/Hosting", "Travel/Transport", "Meals/Entertainment", "Office Supplies", "Marketing/Ads", "Utilities/Rent", "Bills", "Services/Fees", "Income/Credits", or "Miscellaneous".
    - date: The date of the transaction in ISO 8601 format. If no date is found, use the current date.
 4. Return ONLY a valid JSON object matching the instructions above. Do not include markdown code block formatting or additional commentary.`;
 

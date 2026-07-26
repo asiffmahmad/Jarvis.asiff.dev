@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAgents } from "@/lib/agents/use-agents";
 import { DashboardLeftPanel } from "@/components/dashboard/dashboard-left-panel";
 import { DashboardRightPanel } from "@/components/dashboard/dashboard-right-panel";
 import { DashboardConsole } from "@/components/dashboard/dashboard-console";
@@ -9,6 +10,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 
 export default function MissionControlPage() {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const agentsState = useAgents();
 
   return (
     <AppLayout edgeToEdge>
@@ -19,23 +21,27 @@ export default function MissionControlPage() {
 
         {/* 2. Center Canvas (The AI Core) */}
         <main className="flex-[2] relative h-full flex flex-col items-center justify-center bg-jarvis-bg-deepest/50">
-          <div className="absolute top-8 left-8 z-20">
-            <h1 className="text-2xl font-heading font-bold uppercase tracking-widest text-jarvis-primary text-glow drop-shadow-[0_0_15px_rgba(52,245,208,0.5)]">
+          <div className="absolute top-8 left-8 z-20 pointer-events-none">
+            <h1 className="text-2xl font-heading font-bold uppercase tracking-widest text-[#00F5D4] text-glow drop-shadow-[0_0_15px_rgba(0,245,212,0.5)]">
               Mission Control
             </h1>
-            <p className="text-xs text-jarvis-text-muted mt-2 uppercase tracking-widest font-mono">
-              System Status: Nominal
+            <p className="text-[10px] text-jarvis-text-muted mt-2 uppercase tracking-widest font-mono">
+              Core Status: Active
             </p>
           </div>
 
-          <AICoreVisualization onSelectAgent={setSelectedAgent} selectedAgent={selectedAgent} />
+          <AICoreVisualization 
+            onSelectAgent={setSelectedAgent} 
+            selectedAgent={selectedAgent} 
+            agentsState={agentsState}
+          />
 
           {/* 4. Bottom Console */}
-          {/* <DashboardConsole /> */}
+          {/* <DashboardConsole agentsState={agentsState} /> */}
         </main>
 
-      {/* 3. Right Inspector Panel */}
-      <DashboardRightPanel selectedAgent={selectedAgent} />
+        {/* 3. Right Inspector Panel */}
+        <DashboardRightPanel selectedAgent={selectedAgent} agentsState={agentsState} />
 
       </div>
     </AppLayout>
