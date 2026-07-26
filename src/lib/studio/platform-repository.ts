@@ -57,6 +57,14 @@ const CONSTRAINTS: Record<Platform, PlatformConstraint> = {
     supportsVideo: true,
     maxMediaCount: 35,
   },
+  pinterest: {
+    platform: "pinterest",
+    maxCharacters: 500,
+    maxHashtags: 20,
+    supportsImages: true,
+    supportsVideo: true,
+    maxMediaCount: 1,
+  },
 };
 
 export class PlatformRepository {
