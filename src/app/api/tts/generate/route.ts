@@ -20,9 +20,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // Rewrite relative audioUrl to full URL
-    if (data.audioUrl && !data.audioUrl.startsWith("http")) {
-      data.audioUrl = `${ttsUrl}${data.audioUrl}`;
+    // Rewrite relative audioUrl to proxied Next.js URL (browser-accessible)
+    if (data.audioUrl) {
+      const id = data.audioUrl.replace("/audio/", "").replace(".m4a", "");
+      data.audioUrl = `/api/media/audio/${id}.m4a`;
     }
 
     return NextResponse.json(data);

@@ -13,6 +13,8 @@ const storagePaths = [
   path.join(process.cwd(), 'storage/audio'),
   path.join(process.cwd(), 'storage/subtitles'),
   path.join(process.cwd(), 'storage/temp'),
+  path.join(process.cwd(), 'storage/video'),
+  path.join(process.cwd(), 'storage/merged'),
 ];
 
 storagePaths.forEach(p => fs.ensureDirSync(p));

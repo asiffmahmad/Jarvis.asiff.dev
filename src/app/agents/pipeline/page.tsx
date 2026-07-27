@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { AppLayout } from "@/components/layout/app-layout";
-import { Route, Save, Loader2, Plus, X, Lock, Cpu, Trash2, PenTool } from "lucide-react";
+import { Route, Save, Loader2, Plus, X, Lock, Cpu, Trash2, PenTool, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Agent = {
@@ -97,6 +97,14 @@ export default function PipelineSettingsPage() {
 
   const removeAgentFromPipeline = (index: number) => {
     updateCurrentPipelineFlow(pipelineFlow.filter((_, i) => i !== index));
+  };
+
+  const moveStep = (index: number, direction: -1 | 1) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= pipelineFlow.length) return;
+    const newFlow = [...pipelineFlow];
+    [newFlow[index], newFlow[targetIndex]] = [newFlow[targetIndex], newFlow[index]];
+    updateCurrentPipelineFlow(newFlow);
   };
 
   const createNewPipeline = () => {
@@ -241,10 +249,26 @@ export default function PipelineSettingsPage() {
                     key={`${agentId}-${index}`}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="glass-strong border border-jarvis-panel rounded-2xl p-4 flex items-center gap-6 relative group"
+                    className="glass-strong border border-jarvis-panel rounded-2xl p-4 flex items-center gap-4 relative group"
                   >
-                    <div className="size-10 rounded-full bg-jarvis-bg border border-jarvis-panel flex items-center justify-center font-heading font-bold text-jarvis-primary text-sm shadow-[0_0_15px_rgba(52,245,208,0.1)]">
-                      {index + 1}
+                    <div className="flex flex-col items-center gap-1">
+                      <button
+                        onClick={() => moveStep(index, -1)}
+                        disabled={index === 0}
+                        className="p-0.5 text-jarvis-text-muted hover:text-jarvis-primary transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                      >
+                        <ChevronUp className="size-4" />
+                      </button>
+                      <div className="size-8 rounded-full bg-jarvis-bg border border-jarvis-panel flex items-center justify-center font-heading font-bold text-jarvis-primary text-xs shadow-[0_0_15px_rgba(52,245,208,0.1)]">
+                        {index + 1}
+                      </div>
+                      <button
+                        onClick={() => moveStep(index, 1)}
+                        disabled={index === pipelineFlow.length - 1}
+                        className="p-0.5 text-jarvis-text-muted hover:text-jarvis-primary transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                      >
+                        <ChevronDown className="size-4" />
+                      </button>
                     </div>
                     <div className="flex-1">
                       <h3 className="text-sm font-bold text-white">{agent.name}</h3>
@@ -258,7 +282,7 @@ export default function PipelineSettingsPage() {
                     </button>
                     
                     {/* Connecting Line to next node */}
-                    <div className="absolute left-9 top-14 w-0.5 h-6 bg-jarvis-panel-border -z-10" />
+                    <div className="absolute left-[41px] top-[68px] w-0.5 h-6 bg-jarvis-panel-border -z-10" />
                   </motion.div>
                 );
               })}

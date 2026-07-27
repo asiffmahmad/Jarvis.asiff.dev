@@ -6,6 +6,14 @@ export async function POST(req: Request) {
     const body = await req.json();
     const TTS_URL = process.env.TTS_AGENT_URL || "http://localhost:4000";
 
+    // Rewrite Next.js-proxied audio URL back to TTS agent's internal path
+    if (body.audioUrl && typeof body.audioUrl === "string") {
+      const match = body.audioUrl.match(/\/api\/media\/audio\/(.+)\.m4a$/);
+      if (match) {
+        body.audioUrl = `/audio/${match[1]}.m4a`;
+      }
+    }
+
     const res = await fetch(`${TTS_URL}/api/v1/merge`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -18,9 +26,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: data.error }, { status: res.status });
     }
 
-    // Rewrite the internal tts-agent URL to a proxied Next.js URL
+    // Rewrite internal path to proxied Next.js URL
     if (data.videoUrl) {
-      data.videoUrl = `${TTS_URL}${data.videoUrl}`;
+      const id = data.videoUrl.replace("/merged/", "").replace(".mp4", "");
+      data.videoUrl = `/api/media/merged/${id}.mp4`;
     }
 
     return NextResponse.json(data);

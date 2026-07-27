@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const tts_controller_1 = require("../controllers/tts.controller");
+const validate_1 = require("../middleware/validate");
+const tts_schema_1 = require("../models/tts.schema");
+const router = (0, express_1.Router)();
+router.post('/generate', (0, validate_1.validate)(tts_schema_1.generateTTSRequestSchema), tts_controller_1.generateTTS);
+router.post('/batch', (0, validate_1.validate)(tts_schema_1.batchTTSRequestSchema), tts_controller_1.batchTTS);
+router.get('/voices', tts_controller_1.getVoices);
+router.delete('/audio/:id', tts_controller_1.deleteAudio);
+exports.default = router;

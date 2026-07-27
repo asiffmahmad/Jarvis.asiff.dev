@@ -1,0 +1,3 @@
+1
+00:00:00,000 --> 00:00:18,000
+Imagine a world where machines think, learn, and solve problems like humans. Artificial Intelligence enables machines to perform tasks that typically require human intelligence, like recognizing objects and understanding language. It's reality, from virtual assistants to self-driving cars, and it's changing our daily lives.

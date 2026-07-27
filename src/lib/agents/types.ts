@@ -1,5 +1,5 @@
 export type AgentStatus = 'idle' | 'running' | 'success' | 'error';
-export type AgentCategory = 'research' | 'content' | 'email' | 'social' | 'seo' | 'automation' | 'support' | 'coding' | 'general';
+export type AgentCategory = 'research' | 'content' | 'media' | 'validation' | 'email' | 'social' | 'seo' | 'automation' | 'support' | 'coding' | 'general';
 
 export interface AgentDefinition {
   id: string;
@@ -10,6 +10,7 @@ export interface AgentDefinition {
   isEnabled?: boolean;
   systemPrompt?: string;
   model?: string;
+  apiProvider?: string;
   temperature?: number;
   capabilities: string[];
 }

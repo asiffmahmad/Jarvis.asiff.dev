@@ -54,7 +54,7 @@ export const getVoices = async (req: Request, res: Response) => {
 export const deleteAudio = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const audioPath = path.join(process.cwd(), 'storage/audio', `${id}.mp3`);
+    const audioPath = path.join(process.cwd(), 'storage/audio', `${id}.m4a`);
     const subtitlePath = path.join(process.cwd(), 'storage/subtitles', `${id}.srt`);
     
     await fs.remove(audioPath);

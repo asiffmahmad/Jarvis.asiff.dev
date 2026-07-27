@@ -44,9 +44,12 @@ export async function GET() {
 
     // Dynamic ID lookup to prevent mismatched IDs across environments
     let agents: any[] = await prisma.$queryRaw`SELECT id, name FROM Agent`;
-    const plannerAgent = agents.find(a => a.name === "Automation Planner");
-    const mediaAgent = agents.find(a => a.name === "Media Developer");
-    const voiceAgent = agents.find(a => a.name === "Voice Agent");
+    const copywriterAgent = agents.find((a: any) => a.name === "Copywriter");
+    const factAuditorAgent = agents.find((a: any) => a.name === "Fact Auditor");
+    const coordinatorAgent = agents.find((a: any) => a.name === "Media Coordinator");
+    const mediaAgent = agents.find((a: any) => a.name === "Media Developer");
+    const voiceAgent = agents.find((a: any) => a.name === "Voice Agent");
+    const mergeAgent = agents.find((a: any) => a.name === "Merge Agent");
 
     let hasUpdates = false;
 
@@ -54,28 +57,43 @@ export async function GET() {
     const defaultPipeline = pipelines.find((p: any) => p.id === "default");
     if (defaultPipeline && (!defaultPipeline.flow || defaultPipeline.flow.length === 0)) {
       const flowIds = [];
+      const plannerAgent = agents.find((a: any) => a.name === "Automation Planner");
       if (plannerAgent) flowIds.push(plannerAgent.id);
       if (mediaAgent) flowIds.push(mediaAgent.id);
       defaultPipeline.flow = flowIds;
       hasUpdates = true;
     }
 
-    // 2. Ensure Audio & Video Pipeline exists
+    // 2. Ensure Audio & Video Pipeline exists and has the correct production agents
+    const expectedAgentIds = [
+      copywriterAgent?.id,
+      factAuditorAgent?.id,
+      coordinatorAgent?.id,
+      mediaAgent?.id,
+      voiceAgent?.id,
+      mergeAgent?.id,
+    ].filter(Boolean);
+
     let audioVideoPipeline = pipelines.find((p: any) => p.name === "Audio & Video Pipeline");
     if (!audioVideoPipeline) {
-      const flowIds = [];
-      if (plannerAgent) flowIds.push(plannerAgent.id);
-      if (mediaAgent) flowIds.push(mediaAgent.id);
-      if (voiceAgent) flowIds.push(voiceAgent.id);
-
       audioVideoPipeline = {
         id: "audio_video_pipeline",
         name: "Audio & Video Pipeline",
-        flow: flowIds
+        flow: expectedAgentIds
       };
-      
       pipelines.push(audioVideoPipeline);
       hasUpdates = true;
+    } else {
+      // Update existing pipeline if agents are missing or out of order
+      const currentFlow = audioVideoPipeline.flow || [];
+      const expectedSet = new Set(expectedAgentIds);
+      const currentSet = new Set(currentFlow);
+      const missing = expectedAgentIds.filter((id: string) => !currentSet.has(id));
+      const extra = currentFlow.filter((id: string) => !expectedSet.has(id));
+      if (missing.length > 0 || extra.length > 0 || currentFlow.length !== expectedAgentIds.length) {
+        audioVideoPipeline.flow = expectedAgentIds;
+        hasUpdates = true;
+      }
     }
 
     if (hasUpdates) {

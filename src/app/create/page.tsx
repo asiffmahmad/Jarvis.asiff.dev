@@ -50,23 +50,30 @@ function PixabayPreview({ apiUrl, mediaType }: { apiUrl: string; mediaType: stri
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!apiUrl || !apiUrl.includes("pixabay.com")) {
-      // Not a Pixabay URL, try just rendering it if it's a direct URL
+    if (!apiUrl) return;
+    // Direct media URLs (proxied through Next.js, CDN files, or local audio)
+    if (apiUrl.startsWith("/api/media/") || apiUrl.includes("cdn.pixabay.com") || apiUrl.endsWith(".mp4") || apiUrl.endsWith(".m4a") || apiUrl.endsWith(".mp3") || apiUrl.endsWith(".wav")) {
       setMediaUrl(apiUrl);
       return;
     }
-    fetch(apiUrl)
-      .then(res => res.json())
-      .then(data => {
-        if (mediaType === "video" && data.hits?.[0]?.videos?.medium?.url) {
-          setMediaUrl(data.hits[0].videos.medium.url);
-        } else if (mediaType === "image" && data.hits?.[0]?.largeImageURL) {
-          setMediaUrl(data.hits[0].largeImageURL);
-        } else {
-          setError("No media found from Pixabay API");
-        }
-      })
-      .catch(err => setError(err.message));
+    // Pixabay API URL — fetch and resolve to direct media URL
+    if (apiUrl.includes("pixabay.com/api/")) {
+      fetch(apiUrl)
+        .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
+        .then(data => {
+          if (mediaType === "video" && data.hits?.[0]?.videos?.medium?.url) {
+            setMediaUrl(data.hits[0].videos.medium.url);
+          } else if (mediaType === "image" && data.hits?.[0]?.largeImageURL) {
+            setMediaUrl(data.hits[0].largeImageURL);
+          } else {
+            setError("No media found from Pixabay API");
+          }
+        })
+        .catch(err => setError(err.message));
+      return;
+    }
+    // Unknown URL — try direct rendering
+    setMediaUrl(apiUrl);
   }, [apiUrl, mediaType]);
 
   if (error) return <div className="text-red-500 text-xs p-4 bg-red-500/10 rounded-xl font-mono">{error}</div>;

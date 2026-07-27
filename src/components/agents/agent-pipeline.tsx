@@ -55,14 +55,14 @@ function tryParsePost(text: string): ParsedPost | null {
       p = p.post as Record<string, unknown>;
     }
     
-    // Check if it's a Media Developer JSON
-    if (p && p.mediaType && p.apiUrl) {
+    // Check if it's a Media Developer JSON (just query + mediaType, no apiUrl)
+    if (p && p.query && p.mediaType && !p.apiUrl) {
        return {
          title: (p.query as string) || "Media Developer Output",
-         caption: `[Generated Media Result]\nMedia Type: ${p.mediaType}\nAPI URL: ${p.apiUrl}\n\nThis media was generated autonomously via the pipeline.`,
+         caption: `[Media Search Result]\nQuery: ${p.query}\nType: ${p.mediaType}`,
          hashtags: ["media", p.mediaType as string],
-         mediaIdeas: [p.apiUrl as string],
-         callToAction: "Check out this media",
+         mediaIdeas: [],
+         callToAction: "",
          platform: "instagram",
          bestPostingTime: "12:00 PM"
        };
@@ -168,6 +168,8 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
   const [loopFeedback, setLoopFeedback] = useState<string | null>(null);
 
   const [steps, setSteps] = useState<PipelineStep[]>([]);
+  const stepsRef = useRef<PipelineStep[]>([]);
+  useEffect(() => { stepsRef.current = steps; }, [steps]);
   const [agentsList, setAgentsList] = useState<any[]>([]);
   const [pipelines, setPipelines] = useState<any[]>([]);
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>("default");
@@ -192,9 +194,12 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
         
         setAgentsList(agents);
         setPipelines(pList);
-        // If the URL or something specifies a default, we could set it, but we default to 'default' or first available
-        if (pList.length > 0 && !pList.find((p:any) => p.id === "default")) {
-           setSelectedPipelineId(pList[0].id);
+        // Prefer "Audio & Video Pipeline" when available, otherwise fall back to 'default' or first
+        const avPipeline = pList.find((p: any) => p.name === "Audio & Video Pipeline");
+        if (avPipeline) {
+          setSelectedPipelineId(avPipeline.id);
+        } else if (pList.length > 0 && !pList.find((p: any) => p.id === "default")) {
+          setSelectedPipelineId(pList[0].id);
         }
       } catch (err) {
         console.error("Failed to load pipeline configuration", err);
@@ -282,14 +287,14 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
     if (!abortRef.current) abortRef.current = new AbortController();
     setIsRunning(true);
 
+    const currentSteps = stepsRef.current;
     try {
       let currentInput = `Input Data:\n${promptInput}\n\nUser Theme: ${topic.trim()}`;
       let finalResult = "";
       const stepResults: Record<string, string> = {};
-      // Capture step names locally to avoid stale closure in post-processing
-      const stepNames = steps.map(s => s.name);
+      const stepNames = currentSteps.map(s => s.name);
 
-      for (let i = startIndex; i < steps.length; i++) {
+      for (let i = startIndex; i < currentSteps.length; i++) {
         setCurrentStepIndex(i);
         setSteps(s => {
           const c = [...s];
@@ -297,16 +302,19 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
           return c;
         });
 
-        const isJarvis = i === steps.length - 1;
-        const isSpecializedAgent = ["Voice Agent", "Media Developer"].includes(stepNames[i]);
-        let systemPrompt = steps[i].systemPrompt;
+        const isJarvis = i === currentSteps.length - 1;
+        const isSpecializedAgent = ["Copywriter", "Fact Auditor", "Media Coordinator", "Media Developer", "Voice Agent", "Merge Agent"].includes(stepNames[i]);
+        let systemPrompt = currentSteps[i].systemPrompt;
         
         const jsonInstruction = "\n\nCRITICAL INSTRUCTION: Your output MUST be a valid JSON object containing the post with these exact keys: title, caption, hashtags (array), mediaIdeas (array), callToAction, platform, bestPostingTime. Output ONLY the raw JSON.";
         
         const jarvisPostFormat = `\n\nCRITICAL OUTPUT FORMAT: After your review word 'APPROVED:' or 'REJECTED:', output ONLY this exact JSON structure:\n{\n  "title": "Post headline",\n  "caption": "Full post text",\n  "hashtags": ["array", "of", "strings"],\n  "mediaIdeas": [],\n  "callToAction": "Call to action text",\n  "platform": "linkedin",\n  "bestPostingTime": "9:00 AM"\n}`;
 
         if (isJarvis) {
-          if (revisionCountRef.current === 0) {
+          const prevStepName = i > 0 ? stepNames[i - 1] : "";
+          if (prevStepName === "Merge Agent") {
+            systemPrompt += `\n\nThe Merge Agent has verified both audio and video assets. Approve the pipeline output. Start your response with 'APPROVED:' followed by this exact JSON:\n{\n  "title": "${topic.trim()}",\n  "caption": "Multi-media content generated successfully.",\n  "hashtags": ["media", "audio", "video"],\n  "mediaIdeas": [],\n  "callToAction": "",\n  "platform": "instagram",\n  "bestPostingTime": "12:00 PM"\n}`;
+          } else if (revisionCountRef.current === 0) {
             systemPrompt += `\n\nCRITICAL INSTRUCTION: Review the post carefully. If it is flawed, reject it by starting your response EXACTLY with 'REJECTED: [Agent Name] |' followed by detailed feedback. If it is perfect, start with 'APPROVED:' followed by the valid JSON post.${jarvisPostFormat}`;
           } else {
             systemPrompt += `\n\nCRITICAL INSTRUCTION: The post has been revised. You MUST approve it this time. Start your response with 'APPROVED:' followed by the final valid JSON post.${jarvisPostFormat}`;
@@ -325,7 +333,31 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
 
         // Build lean context: original topic + previous step output only (token efficient)
         let inputContext = `User Theme: ${topic.trim()}\n\nInput:\n${promptInput}`;
-        if (i > startIndex) {
+        if (stepNames[i] === "Voice Agent") {
+          let voiceText = promptInput;
+          const coordResult = stepResults["Media Coordinator"];
+          if (coordResult) {
+            try {
+              const cleaned = coordResult.trim();
+              const start = cleaned.indexOf("{");
+              const end = cleaned.lastIndexOf("}");
+              if (start !== -1 && end !== -1) {
+                const coord = JSON.parse(cleaned.substring(start, end + 1));
+                if (coord.voiceScript) voiceText = coord.voiceScript;
+              }
+            } catch {}
+          }
+          inputContext = `User Theme: ${topic.trim()}\n\nText to convert to speech (copy this EXACTLY into the "text" field):\n${voiceText}`;
+        } else if (stepNames[i] === "Media Coordinator") {
+          // Media Coordinator needs the actual post content (from Copywriter), not the audit result
+          const copywriterOut = stepResults["Copywriter"] || "";
+          const postContent = copywriterOut || stepResults[stepNames[i - 1]] || "";
+          inputContext = `User Theme: ${topic.trim()}\n\n[Generated Post]:\n${postContent}\n\nOriginal Input:\n${promptInput}`;
+        } else if (stepNames[i] === "Merge Agent") {
+          const voiceOut = stepResults["Voice Agent"] || "";
+          const mediaOut = stepResults["Media Developer"] || "";
+          inputContext = `User Theme: ${topic.trim()}\n\n[Voice Agent Output]:\n${voiceOut}\n\n[Media Developer Output]:\n${mediaOut}\n\nOriginal Input:\n${promptInput}`;
+        } else if (i > startIndex) {
           inputContext = `User Theme: ${topic.trim()}\n\n[Previous Step — ${stepNames[i - 1]}]:\n${stepResults[stepNames[i - 1]] || ""}\n\nOriginal Input:\n${promptInput}`;
         }
 
@@ -349,7 +381,7 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
         });
 
         stepResults[stepNames[i]] = result;
-        currentInput = `Previous Output from ${steps[i].name}:\n${result}`;
+        currentInput = `Previous Output from ${currentSteps[i].name}:\n${result}`;
         finalResult = result;
 
         if (isJarvis) {
@@ -361,17 +393,21 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
       }
 
       // Post-process the final output and merge any accumulated media generated throughout the pipeline
+      console.log("[DEBUG] stepNames:", stepNames);
+      console.log("[DEBUG] stepResults keys:", Object.keys(stepResults));
       const parsed = tryParsePost(finalResult);
       if (parsed) {
-        // Search through the pipeline step results to see if we generated media along the way
         const mediaUrls: string[] = [];
         let hasAudio = false;
         let hasVideo = false;
+        let collectedAudioUrl = '';
+        let collectedVideoUrl = '';
+        let resolvedVideoBlobUrl = '';
 
         for (const name of stepNames) {
           const content = stepResults[name];
           if (!content) continue;
-          
+
           // 1. Check for Voice Agent Output
           if (name === "Voice Agent") {
             try {
@@ -382,6 +418,7 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
                 cleaned = cleaned.substring(startIdx, endIdx + 1);
               }
               const p = JSON.parse(cleaned);
+              console.log("[DEBUG] Voice Agent parsed output:", p);
               if (p.mediaType === "audio" && p.text) {
                 setSteps(s => { const c = [...s]; const voiceStep = c.find(x => x.name === "Voice Agent"); if (voiceStep) voiceStep.operation = "Synthesizing Audio..."; return c; });
                 const ttsRes = await fetch(`/api/tts/generate`, {
@@ -390,17 +427,20 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
                   body: JSON.stringify({ text: p.text, voice: p.voice }),
                 });
                 const ttsData = await ttsRes.json();
+                console.log("[DEBUG] TTS response:", ttsData);
                 if (ttsData.success && ttsData.audioUrl) {
-                  mediaUrls.push(ttsData.audioUrl);
+                  collectedAudioUrl = ttsData.audioUrl;
                   hasAudio = true;
                 }
+              } else {
+                console.warn("[DEBUG] Voice Agent output missing audio/text fields");
               }
             } catch (e) {
               console.error("Failed parsing/generating voice agent audio in loop", e);
             }
           }
 
-          // 2. Check for Media Developer Output
+          // 2. Check for Media Developer Output — construct Pixabay API URL from query
           if (name === "Media Developer") {
             try {
               let cleaned = content.trim();
@@ -410,17 +450,64 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
                 cleaned = cleaned.substring(startIdx, endIdx + 1);
               }
               const p = JSON.parse(cleaned);
-              if (p.apiUrl) {
-                mediaUrls.push(p.apiUrl);
+              console.log("[DEBUG] Media Developer parsed output:", p);
+              if (p.query && p.mediaType) {
+                const pixabayKey = "56870592-9cd9fcd9ccb8d5e123c67bd18";
+                const encodedQuery = encodeURIComponent(p.query);
+                collectedVideoUrl = p.mediaType === "video"
+                  ? `https://pixabay.com/api/videos/?key=${pixabayKey}&q=${encodedQuery}`
+                  : `https://pixabay.com/api/?key=${pixabayKey}&q=${encodedQuery}`;
                 hasVideo = p.mediaType === "video";
+              } else {
+                console.warn("[DEBUG] Media Developer output missing query/mediaType fields");
               }
             } catch (e) {
-              console.error("Failed parsing media developer URL in loop", e);
+              console.error("Failed parsing media developer output in loop", e);
             }
+          }
+
+          // Merge Agent post-processing (handled after the loop below)
+        }
+
+        console.log("[DEBUG] Post media loop - audioUrl:", collectedAudioUrl, "videoUrl:", collectedVideoUrl);
+
+        // Merge Agent post-processing — merge audio and video
+        if (collectedAudioUrl && collectedVideoUrl) {
+          setSteps(s => {
+            const c = [...s];
+            const mergeStep = c.find(x => x.name === "Merge Agent");
+            if (mergeStep) mergeStep.operation = "Merging Audio & Video...";
+            return c;
+          });
+          try {
+            const mergeRes = await fetch("/api/media/merge", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                pixabayApiUrl: collectedVideoUrl,
+                audioUrl: collectedAudioUrl,
+              }),
+            });
+            const mergeData = await mergeRes.json();
+            if (mergeData.success && mergeData.videoUrl) {
+              mediaUrls.push(mergeData.videoUrl);
+              hasAudio = false;
+            }
+          } catch (err) {
+            console.error("Media merge failed:", err);
           }
         }
 
-        // If we accumulated any media, inject it into the final draft payload
+        // Fallback: if no merged video, use stored blob URL or raw URLs
+        if (mediaUrls.length === 0) {
+          if (resolvedVideoBlobUrl) {
+            mediaUrls.push(resolvedVideoBlobUrl);
+          }
+          if (hasAudio && collectedAudioUrl) {
+            mediaUrls.push(collectedAudioUrl);
+          }
+        }
+
         if (mediaUrls.length > 0) {
           parsed.mediaIdeas = mediaUrls;
           if (!parsed.hashtags.includes("media")) {
@@ -464,22 +551,22 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
           feedback = payload.replace(/REJECTED:\s*/i, "").trim() || "Content lacks required elements.";
         }
 
-        let fallbackIndex = steps.findIndex(s => s.name.toLowerCase().includes(targetAgentName.toLowerCase()) && targetAgentName.length > 0);
+        let fallbackIndex = currentSteps.findIndex(s => s.name.toLowerCase().includes(targetAgentName.toLowerCase()) && targetAgentName.length > 0);
         if (fallbackIndex === -1) {
-          fallbackIndex = steps.findIndex(s => s.name.toLowerCase().includes("copywriter") || s.name.toLowerCase().includes("content generator"));
-          if (fallbackIndex === -1) fallbackIndex = Math.max(0, steps.length - 2);
+          fallbackIndex = currentSteps.findIndex(s => s.name.toLowerCase().includes("copywriter") || s.name.toLowerCase().includes("content generator"));
+          if (fallbackIndex === -1) fallbackIndex = Math.max(0, currentSteps.length - 2);
         }
 
         setHasFailedOnce(true);
         revisionCountRef.current += 1;
-        setLoopFeedback(`Validation Failed. Rerouting back to ${steps[fallbackIndex]?.name || "agent"}.`);
+        setLoopFeedback(`Validation Failed. Rerouting back to ${currentSteps[fallbackIndex]?.name || "agent"}.`);
         
         setSteps(s => {
           const c = [...s];
-          c[steps.length - 1] = { 
-            ...c[steps.length - 1], 
+          c[currentSteps.length - 1] = { 
+            ...c[currentSteps.length - 1], 
             status: "failed_validation", 
-            result: `[JARVIS COMPLIANCE AUDIT]\nSTATUS: REJECTED\nTARGET: ${steps[fallbackIndex]?.name}\n\n${feedback}\n\nACTION: Re-routing agent for revisions.`
+            result: `[JARVIS COMPLIANCE AUDIT]\nSTATUS: REJECTED\nTARGET: ${currentSteps[fallbackIndex]?.name}\n\n${feedback}\n\nACTION: Re-routing agent for revisions.`
           };
           return c;
         });
@@ -492,7 +579,7 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
             }
             return c;
           });
-          const fallbackData = steps[fallbackIndex - 1]?.result || steps[fallbackIndex]?.result || "";
+          const fallbackData = currentSteps[fallbackIndex - 1]?.result || currentSteps[fallbackIndex]?.result || "";
           runPipelineFromStep(fallbackIndex, fallbackData, feedback);
         }, 4500);
       } else {
@@ -504,6 +591,23 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
 
   const handleStart = async () => {
     if (!topic.trim() || isRunning) return;
+
+    // Ensure Audio & Video Pipeline is selected if current pipeline lacks media agents
+    const avPipeline = pipelines.find((p: any) => p.name === "Audio & Video Pipeline");
+    if (avPipeline && selectedPipelineId !== avPipeline.id) {
+      const currentFlow = pipelines.find(p => p.id === selectedPipelineId)?.flow || [];
+      const hasMediaAgents = currentFlow.some((id: string) => {
+        const agent = agentsList.find((a: any) => a.id === id);
+        return agent && ["Voice Agent", "Media Developer"].includes(agent.name);
+      });
+      if (!hasMediaAgents) {
+        console.log("[Pipeline] Auto-switching to Audio & Video Pipeline");
+        setSelectedPipelineId(avPipeline.id);
+        // Let React re-render with new pipeline, then start
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+
     reset();
     const input = initialContext
       ? `Topic: ${topic.trim()}\n\nSource Context/Article Content:\n${initialContext}`
@@ -517,12 +621,8 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
       hasNavigatedRef.current = true;
       const timer = setTimeout(async () => {
         try {
-          const controller = new AbortController();
-          const id = setTimeout(() => controller.abort(), 2000); // 2-second timeout for DB save
-
           await fetch("/api/publish/draft", {
             method: "POST",
-            signal: controller.signal,
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               post: {
@@ -539,7 +639,6 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
               }
             }),
           });
-          clearTimeout(id);
         } catch (err) {
           console.error("Failed to save draft to MySQL:", err);
         }
