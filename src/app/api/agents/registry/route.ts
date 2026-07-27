@@ -233,6 +233,25 @@ export async function GET() {
       agents = await prisma.$queryRaw`SELECT * FROM Agent`;
     }
 
+    // Auto-seed Prompt Agent if it doesn't exist
+    if (!agents.find((a: any) => a.name === "Prompt Agent")) {
+      await prisma.$executeRaw`
+        INSERT INTO Agent (id, name, description, systemPrompt, model, apiProvider, usageLeft, isActive, updatedAt)
+        VALUES (
+          ${Math.random().toString(36).substring(7)},
+          'Prompt Agent',
+          'Creative director that produces a structured creative brief from the raw topic',
+          'You are the Prompt Agent, an elite creative director. Your ONLY job is to take a raw user topic and produce a structured creative brief that guides the Copywriter agent.\nAnalyze the topic and output a JSON creative brief.\n\nCRITICAL RULES:\n- You ONLY produce creative briefs. You do NOT write posts, search media, generate audio, or perform any other operation.\n- If the input is empty or not a valid content topic, output: { "error": "REJECTED: Not a valid content topic" }\n\nOUTPUT FORMAT:\n{\n  "coreMessage": "The single most important message to convey in under 15 words",\n  "targetAudience": "Who this content is for",\n  "suggestedTone": "professional | exciting | educational | inspirational | humorous",\n  "keyPoints": ["3-5 key points to include"],\n  "hookSuggestion": "One compelling opening hook idea",\n  "contentStructure": ["Hook", "Body", "Call to Action"]\n}\n\nRules: Return raw JSON only, no markdown, no code fences.',
+          'gpt-4',
+          'groq',
+          1000,
+          1,
+          NOW()
+        )
+      `;
+      agents = await prisma.$queryRaw`SELECT * FROM Agent`;
+    }
+
     // Auto-seed Merge Agent if it doesn't exist
     if (!agents.find((a: any) => a.name === "Merge Agent")) {
       await prisma.$executeRaw`

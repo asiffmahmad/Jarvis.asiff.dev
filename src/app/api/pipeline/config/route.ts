@@ -44,6 +44,7 @@ export async function GET() {
 
     // Dynamic ID lookup to prevent mismatched IDs across environments
     let agents: any[] = await prisma.$queryRaw`SELECT id, name FROM Agent`;
+    const promptAgent = agents.find((a: any) => a.name === "Prompt Agent");
     const copywriterAgent = agents.find((a: any) => a.name === "Copywriter");
     const factAuditorAgent = agents.find((a: any) => a.name === "Fact Auditor");
     const coordinatorAgent = agents.find((a: any) => a.name === "Media Coordinator");
@@ -66,6 +67,7 @@ export async function GET() {
 
     // 2. Ensure Audio & Video Pipeline exists and has the correct production agents
     const expectedAgentIds = [
+      promptAgent?.id,
       copywriterAgent?.id,
       factAuditorAgent?.id,
       coordinatorAgent?.id,

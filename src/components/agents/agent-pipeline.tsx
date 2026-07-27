@@ -170,9 +170,55 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
   const [steps, setSteps] = useState<PipelineStep[]>([]);
   const stepsRef = useRef<PipelineStep[]>([]);
   useEffect(() => { stepsRef.current = steps; }, [steps]);
+
   const [agentsList, setAgentsList] = useState<any[]>([]);
   const [pipelines, setPipelines] = useState<any[]>([]);
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>("default");
+
+  const buildStepsFromPipeline = useCallback((pipelineId: string) => {
+    if (agentsList.length === 0 || pipelines.length === 0) return null;
+    const activeFlow = pipelines.find(p => p.id === pipelineId)?.flow || (pipelines[0]?.flow || []);
+    const loadedSteps: PipelineStep[] = [];
+    let startX = 80;
+    const colors = ["#FF3366", "#00E5FF", "#FFD500", "#B200FF", "#00FF66", "#FF9900"];
+    for (let idx = 0; idx < activeFlow.length; idx++) {
+      const id = activeFlow[idx];
+      const agent = agentsList.find((a: any) => a.id === id);
+      if (agent) {
+        loadedSteps.push({
+          id: agent.id,
+          name: agent.name,
+          description: agent.description || "",
+          status: "pending",
+          result: "",
+          systemPrompt: agent.systemPrompt,
+          operation: `Running ${agent.name}...`,
+          color: colors[idx % colors.length],
+          icon: Cpu,
+          x: startX,
+          y: idx % 2 === 0 ? 140 : 280,
+        });
+        startX += 110;
+      }
+    }
+    const jarvis = agentsList.find((a: any) => a.name === "JARVIS");
+    if (jarvis) {
+      loadedSteps.push({
+        id: jarvis.id,
+        name: jarvis.name,
+        description: jarvis.description || "",
+        status: "pending",
+        result: "",
+        systemPrompt: jarvis.systemPrompt,
+        operation: "Final JARVIS Audit...",
+        color: "#FF1744",
+        icon: ShieldCheck,
+        x: startX + 20,
+        y: 210,
+      });
+    }
+    return loadedSteps;
+  }, [agentsList, pipelines]);
 
   const connectionPaths: string[] = [];
 
@@ -210,52 +256,8 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
 
   useEffect(() => {
     if (agentsList.length > 0 && pipelines.length > 0 && !isRunning) {
-      const activeFlow = pipelines.find(p => p.id === selectedPipelineId)?.flow || pipelines[0].flow;
-      
-      const loadedSteps: PipelineStep[] = [];
-      let startX = 80;
-      
-      const colors = ["#FF3366", "#00E5FF", "#FFD500", "#B200FF", "#00FF66", "#FF9900"];
-      
-      for (let idx = 0; idx < activeFlow.length; idx++) {
-        const id = activeFlow[idx];
-        const agent = agentsList.find((a: any) => a.id === id);
-        if (agent) {
-          loadedSteps.push({
-            id: agent.id,
-            name: agent.name,
-            description: agent.description || "",
-            status: "pending",
-            result: "",
-            systemPrompt: agent.systemPrompt,
-            operation: `Running ${agent.name}...`,
-            color: colors[idx % colors.length],
-            icon: Cpu,
-            x: startX,
-            y: idx % 2 === 0 ? 140 : 280,
-          });
-          startX += 110;
-        }
-      }
-
-      const jarvis = agentsList.find((a: any) => a.name === "JARVIS");
-      if (jarvis) {
-         loadedSteps.push({
-            id: jarvis.id,
-            name: jarvis.name,
-            description: jarvis.description || "",
-            status: "pending",
-            result: "",
-            systemPrompt: jarvis.systemPrompt,
-            operation: "Final JARVIS Audit...",
-            color: "#FF1744",
-            icon: ShieldCheck,
-            x: startX + 20,
-            y: 210,
-          });
-      }
-
-      setSteps(loadedSteps);
+      const loadedSteps = buildStepsFromPipeline(selectedPipelineId);
+      if (loadedSteps) setSteps(loadedSteps);
     }
   }, [selectedPipelineId, agentsList, pipelines, isRunning]);
 
@@ -303,7 +305,7 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
         });
 
         const isJarvis = i === currentSteps.length - 1;
-        const isSpecializedAgent = ["Copywriter", "Fact Auditor", "Media Coordinator", "Media Developer", "Voice Agent", "Merge Agent"].includes(stepNames[i]);
+        const isSpecializedAgent = ["Prompt Agent", "Copywriter", "Fact Auditor", "Media Coordinator", "Media Developer", "Voice Agent", "Merge Agent"].includes(stepNames[i]);
         let systemPrompt = currentSteps[i].systemPrompt;
         
         const jsonInstruction = "\n\nCRITICAL INSTRUCTION: Your output MUST be a valid JSON object containing the post with these exact keys: title, caption, hashtags (array), mediaIdeas (array), callToAction, platform, bestPostingTime. Output ONLY the raw JSON.";
@@ -603,8 +605,18 @@ export function AgentPipeline({ initialTopic, initialContext }: { initialTopic?:
       if (!hasMediaAgents) {
         console.log("[Pipeline] Auto-switching to Audio & Video Pipeline");
         setSelectedPipelineId(avPipeline.id);
-        // Let React re-render with new pipeline, then start
-        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+
+    // Ensure steps match the selected pipeline (rebuild if stale)
+    const selectedFlow = pipelines.find(p => p.id === selectedPipelineId)?.flow || [];
+    const currentStepIds = stepsRef.current.map(s => s.id);
+    const stepsMatch = selectedFlow.every((id: string, idx: number) => currentStepIds[idx] === id);
+    if (!stepsMatch && agentsList.length > 0 && pipelines.length > 0) {
+      const newSteps = buildStepsFromPipeline(selectedPipelineId);
+      if (newSteps) {
+        setSteps(newSteps);
+        stepsRef.current = newSteps;
       }
     }
 
