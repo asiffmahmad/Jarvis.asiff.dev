@@ -151,3 +151,38 @@
 {"level":"info","message":"Incoming request: GET /merged/7de37642-c262-4189-9610-03d81a0ba0d9.mp4","service":"tts-agent","timestamp":"2026-07-27T13:38:27.438Z"}
 {"level":"info","message":"Incoming request: POST /api/v1/tts/generate","service":"tts-agent","timestamp":"2026-07-27T13:40:56.074Z"}
 {"level":"info","message":"Incoming request: GET /audio/41bd047c-d024-4739-8803-8d29f6d2e2f0.m4a","service":"tts-agent","timestamp":"2026-07-27T13:41:05.525Z"}
+{"level":"info","message":"Incoming request: GET /merged/7de37642-c262-4189-9610-03d81a0ba0d9.mp4","service":"tts-agent","timestamp":"2026-07-28T17:05:30.985Z"}
+{"level":"info","message":"Incoming request: GET /merged/7de37642-c262-4189-9610-03d81a0ba0d9.mp4","service":"tts-agent","timestamp":"2026-07-28T17:05:31.061Z"}
+{"level":"info","message":"Incoming request: POST /api/v1/tts/generate","service":"tts-agent","timestamp":"2026-07-28T17:07:23.014Z"}
+{"level":"info","message":"Incoming request: POST /api/v1/merge","service":"tts-agent","timestamp":"2026-07-28T17:07:23.838Z"}
+{"directVideoUrl":"https://cdn.pixabay.com/video/2015/08/07/3-135655112_medium.mp4","level":"info","message":"Downloading Pixabay video","service":"tts-agent","timestamp":"2026-07-28T17:07:24.343Z"}
+{"level":"info","message":"Running ffmpeg merge","service":"tts-agent","timestamp":"2026-07-28T17:07:25.913Z"}
+{"level":"warn","message":"ffmpeg stderr","service":"tts-agent","stderr":"ffmpeg version 8.1.2 Copyright (c) 2000-2026 the FFmpeg developers\n  built with Apple clang version 21.0.0 (clang-2100.0.123.102)\n  configuration: --prefix=/opt/homebrew/Cellar/ffmpeg/8.1.2_1 --enable-shared --enable-pthreads --enable-version3 --cc=clang --host-cflags= --host-ldflags= --enable-ffplay --enable-gpl --enable-libsvtav1 --enable-libopus --enable-libx264 --enable-libmp3lame --enable-libdav1d --enable-libvmaf --enable-libvpx --enable-libx265 --enable-openssl --enable-videotoolbox --ena","timestamp":"2026-07-28T17:07:29.147Z"}
+{"level":"info","message":"Merge complete","service":"tts-agent","timestamp":"2026-07-28T17:07:29.153Z","videoUrl":"/merged/7f9f1137-61fb-47b5-bfa2-8f78dad585f1.mp4"}
+{"level":"info","message":"Incoming request: GET /merged/7f9f1137-61fb-47b5-bfa2-8f78dad585f1.mp4","service":"tts-agent","timestamp":"2026-07-28T17:07:34.251Z"}
+{"level":"info","message":"Incoming request: GET /merged/7f9f1137-61fb-47b5-bfa2-8f78dad585f1.mp4","service":"tts-agent","timestamp":"2026-07-28T17:07:34.311Z"}
+{"level":"info","message":"Incoming request: GET /merged/7f9f1137-61fb-47b5-bfa2-8f78dad585f1.mp4","service":"tts-agent","timestamp":"2026-07-28T17:17:04.860Z"}
+{"level":"info","message":"Incoming request: GET /merged/7de37642-c262-4189-9610-03d81a0ba0d9.mp4","service":"tts-agent","timestamp":"2026-07-28T17:18:49.648Z"}
+{"level":"info","message":"Incoming request: POST /api/v1/tts/generate","service":"tts-agent","timestamp":"2026-07-28T17:20:21.579Z"}
+{"level":"info","message":"Incoming request: GET /audio/471e897e-aeb0-42dc-8309-8815f3fd07c3.m4a","service":"tts-agent","timestamp":"2026-07-28T17:20:22.275Z"}
+{"level":"info","message":"Incoming request: POST /api/v1/tts/generate","service":"tts-agent","timestamp":"2026-07-28T17:26:26.191Z"}
+{"level":"info","message":"Incoming request: POST /api/v1/merge","service":"tts-agent","timestamp":"2026-07-28T17:26:26.985Z"}
+{"directVideoUrl":"https://cdn.pixabay.com/video/2015/12/24/1754-149965384_medium.mp4","level":"info","message":"Downloading Pixabay video","service":"tts-agent","timestamp":"2026-07-28T17:26:28.056Z"}
+{"level":"info","message":"Running ffmpeg merge","service":"tts-agent","timestamp":"2026-07-28T17:26:49.639Z"}
+{"level":"warn","message":"ffmpeg stderr","service":"tts-agent","stderr":"ffmpeg version 8.1.2 Copyright (c) 2000-2026 the FFmpeg developers\n  built with Apple clang version 21.0.0 (clang-2100.0.123.102)\n  configuration: --prefix=/opt/homebrew/Cellar/ffmpeg/8.1.2_1 --enable-shared --enable-pthreads --enable-version3 --cc=clang --host-cflags= --host-ldflags= --enable-ffplay --enable-gpl --enable-libsvtav1 --enable-libopus --enable-libx264 --enable-libmp3lame --enable-libdav1d --enable-libvmaf --enable-libvpx --enable-libx265 --enable-openssl --enable-videotoolbox --ena","timestamp":"2026-07-28T17:26:54.807Z"}
+{"level":"info","message":"Merge complete","service":"tts-agent","timestamp":"2026-07-28T17:26:54.810Z","videoUrl":"/merged/92873706-a3fd-49b0-99c6-a98e01f8df8d.mp4"}
+{"level":"info","message":"Incoming request: GET /merged/92873706-a3fd-49b0-99c6-a98e01f8df8d.mp4","service":"tts-agent","timestamp":"2026-07-28T17:27:00.902Z"}
+{"level":"info","message":"Incoming request: POST /api/v1/tts/generate","service":"tts-agent","timestamp":"2026-07-28T17:31:11.648Z"}
+{"level":"info","message":"Incoming request: POST /api/v1/merge","service":"tts-agent","timestamp":"2026-07-28T17:31:12.426Z"}
+{"directVideoUrl":"https://cdn.pixabay.com/video/2026/01/09/326739_medium.mp4","level":"info","message":"Downloading Pixabay video","service":"tts-agent","timestamp":"2026-07-28T17:31:12.779Z"}
+{"level":"info","message":"Running ffmpeg merge","service":"tts-agent","timestamp":"2026-07-28T17:31:14.939Z"}
+{"level":"warn","message":"ffmpeg stderr","service":"tts-agent","stderr":"ffmpeg version 8.1.2 Copyright (c) 2000-2026 the FFmpeg developers\n  built with Apple clang version 21.0.0 (clang-2100.0.123.102)\n  configuration: --prefix=/opt/homebrew/Cellar/ffmpeg/8.1.2_1 --enable-shared --enable-pthreads --enable-version3 --cc=clang --host-cflags= --host-ldflags= --enable-ffplay --enable-gpl --enable-libsvtav1 --enable-libopus --enable-libx264 --enable-libmp3lame --enable-libdav1d --enable-libvmaf --enable-libvpx --enable-libx265 --enable-openssl --enable-videotoolbox --ena","timestamp":"2026-07-28T17:31:33.761Z"}
+{"level":"info","message":"Merge complete","service":"tts-agent","timestamp":"2026-07-28T17:31:33.769Z","videoUrl":"/merged/663e4d81-e9b2-495a-9a4c-6a20668551f7.mp4"}
+{"level":"info","message":"Incoming request: GET /merged/663e4d81-e9b2-495a-9a4c-6a20668551f7.mp4","service":"tts-agent","timestamp":"2026-07-28T17:31:39.666Z"}
+{"level":"info","message":"Incoming request: POST /api/v1/tts/generate","service":"tts-agent","timestamp":"2026-07-28T17:48:03.208Z"}
+{"level":"info","message":"Incoming request: POST /api/v1/merge","service":"tts-agent","timestamp":"2026-07-28T17:48:04.029Z"}
+{"directVideoUrl":"https://cdn.pixabay.com/video/2024/02/09/199958-911694865_medium.mp4","level":"info","message":"Downloading Pixabay video","service":"tts-agent","timestamp":"2026-07-28T17:48:04.575Z"}
+{"level":"info","message":"Running ffmpeg merge","service":"tts-agent","timestamp":"2026-07-28T17:48:05.972Z"}
+{"level":"warn","message":"ffmpeg stderr","service":"tts-agent","stderr":"ffmpeg version 8.1.2 Copyright (c) 2000-2026 the FFmpeg developers\n  built with Apple clang version 21.0.0 (clang-2100.0.123.102)\n  configuration: --prefix=/opt/homebrew/Cellar/ffmpeg/8.1.2_1 --enable-shared --enable-pthreads --enable-version3 --cc=clang --host-cflags= --host-ldflags= --enable-ffplay --enable-gpl --enable-libsvtav1 --enable-libopus --enable-libx264 --enable-libmp3lame --enable-libdav1d --enable-libvmaf --enable-libvpx --enable-libx265 --enable-openssl --enable-videotoolbox --ena","timestamp":"2026-07-28T17:48:18.033Z"}
+{"level":"info","message":"Merge complete","service":"tts-agent","timestamp":"2026-07-28T17:48:18.036Z","videoUrl":"/merged/cfce432c-8b03-46ee-b2b1-5bec67ae3e3e.mp4"}
+{"level":"info","message":"Incoming request: GET /merged/663e4d81-e9b2-495a-9a4c-6a20668551f7.mp4","service":"tts-agent","timestamp":"2026-07-31T16:24:45.484Z"}

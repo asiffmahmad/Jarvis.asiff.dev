@@ -1,0 +1,3 @@
+1
+00:00:00,000 --> 00:00:24,000
+The Media Developer agent needs to correct the merge instruction status from "failed" to "succeeded" by providing the video media link and ensuring it's included in the audio script definition before proceeding to the next pipeline step. Additionally, the "mediaIdeas" field should be populated with the provided video/media assets as described in the original release news about sky root.

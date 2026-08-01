@@ -58,7 +58,7 @@ function PixabayPreview({ apiUrl, mediaType }: { apiUrl: string; mediaType: stri
     }
     // Pixabay API URL — fetch and resolve to direct media URL
     if (apiUrl.includes("pixabay.com/api/")) {
-      fetch(apiUrl)
+      fetch(`/api/media/proxy?url=${encodeURIComponent(apiUrl)}`)
         .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
         .then(data => {
           if (mediaType === "video" && data.hits?.[0]?.videos?.medium?.url) {

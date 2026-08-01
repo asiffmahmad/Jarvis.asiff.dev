@@ -201,7 +201,7 @@ export default function AgentSettingsPage() {
                // ignore invalid url parse errors
              }
 
-             const mediaRes = await fetch(finalUrl);
+             const mediaRes = await fetch(`/api/media/proxy?url=${encodeURIComponent(finalUrl)}`);
              if (mediaRes.ok) {
                const mediaData = await mediaRes.json();
                setTestMediaResult({ type: parsedResult.mediaType, data: mediaData, status: "success" });
@@ -461,12 +461,19 @@ export default function AgentSettingsPage() {
                              testMediaResult.type === "video" ? (
                                <video 
                                  controls 
-                                 src={testMediaResult.data.hits[0].videos?.tiny?.url || testMediaResult.data.hits[0].videos?.small?.url || testMediaResult.data.hits[0].videos?.medium?.url} 
+                                 src={`/api/media/proxy?url=${encodeURIComponent(
+                                   testMediaResult.data.hits[0].videos?.tiny?.url || 
+                                   testMediaResult.data.hits[0].videos?.small?.url || 
+                                   testMediaResult.data.hits[0].videos?.medium?.url
+                                 )}`} 
                                  className="w-full rounded-lg shadow-lg border border-jarvis-panel-border"
                                />
                              ) : (
                                <img 
-                                 src={testMediaResult.data.hits[0].webformatURL || testMediaResult.data.hits[0].largeImageURL} 
+                                 src={`/api/media/proxy?url=${encodeURIComponent(
+                                   testMediaResult.data.hits[0].webformatURL || 
+                                   testMediaResult.data.hits[0].largeImageURL
+                                 )}`} 
                                  className="w-full rounded-lg shadow-lg border border-jarvis-panel-border object-contain max-h-[400px]"
                                  alt="Preview"
                                />
